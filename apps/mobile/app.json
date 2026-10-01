@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Supervisión APS",
+    "slug": "supervision-aps",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "supervisionaps",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite"
+    ]
+  }
+}

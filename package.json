@@ -1,0 +1,23 @@
+{
+  "name": "supervision-aps",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @supervision/web",
+    "dev:mobile": "npm run start -w @supervision/mobile",
+    "db:generate": "npm run generate -w @supervision/database",
+    "db:migrate": "npm run migrate -w @supervision/database",
+    "db:migrate:deploy": "npm run migrate:deploy -w @supervision/database",
+    "db:seed": "npm run seed -w @supervision/database",
+    "db:import:territorial": "npm run import:territorial -w @supervision/database",
+    "db:studio": "npm run studio -w @supervision/database",
+    "test:domain": "npm run test -w @supervision/domain"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
