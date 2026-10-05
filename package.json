@@ -14,8 +14,11 @@
     "db:migrate:deploy": "npm run migrate:deploy -w @supervision/database",
     "db:seed": "npm run seed -w @supervision/database",
     "db:import:territorial": "npm run import:territorial -w @supervision/database",
+    "db:reparar:texto": "npm run reparar:texto -w @supervision/database",
     "db:studio": "npm run studio -w @supervision/database",
-    "test:domain": "npm run test -w @supervision/domain"
+    "test:domain": "npm run test -w @supervision/domain",
+    "typecheck:web": "npm run typecheck -w @supervision/web",
+    "ci": "npm run test:domain && npm run typecheck:web"
   },
   "engines": {
     "node": ">=20.19.0"

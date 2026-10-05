@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
+import { jsonError } from "@/lib/errores";
 import { obtenerCatalogoFormulario } from "@/lib/server/catalogo";
 
 export async function GET() {
@@ -8,6 +9,10 @@ export async function GET() {
     return sesion;
   }
 
-  const catalogo = await obtenerCatalogoFormulario(sesion);
-  return NextResponse.json(catalogo);
+  try {
+    const catalogo = await obtenerCatalogoFormulario(sesion);
+    return NextResponse.json(catalogo);
+  } catch (error) {
+    return jsonError(error);
+  }
 }

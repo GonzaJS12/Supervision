@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin, requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError, jsonValidacion, jsonSiHayExtras } from "@/lib/errores";
 import {
   actualizarCriterio,
   buscarCriterio,
@@ -18,11 +18,10 @@ export async function GET(
   const { id } = await context.params;
 
   try {
-    const criterio = await buscarCriterio(Number(id));
+    const criterio = await buscarCriterio(parseIdParam(id));
     return NextResponse.json(criterio);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }
 
@@ -36,7 +35,7 @@ export async function PATCH(
   }
 
   const { id } = await context.params;
-  const cuerpo = (await request.json()) as {
+  let cuerpo: {
     bloqueId?: number;
     nombre?: string;
     descripcion?: string | null;
@@ -45,10 +44,58 @@ export async function PATCH(
   };
 
   try {
-    const criterio = await actualizarCriterio(Number(id), cuerpo);
+    cuerpo = (await request.json()) as typeof cuerpo;
+  } catch {
+    return jsonValidacion("nombre must be a string");
+  }
+
+  const extras = jsonSiHayExtras(cuerpo, [
+    "bloqueId",
+    "nombre",
+    "descripcion",
+    "orden",
+    "activo",
+  ]);
+  if (extras) {
+    return extras;
+  }
+
+  if (cuerpo.bloqueId !== undefined) {
+    if (!Number.isInteger(cuerpo.bloqueId)) {
+      return jsonValidacion("bloqueId must be an integer number");
+    }
+
+    if (cuerpo.bloqueId < 1) {
+      return jsonValidacion("bloqueId must not be less than 1");
+    }
+  }
+
+  if (cuerpo.nombre !== undefined && typeof cuerpo.nombre !== "string") {
+    return jsonValidacion("nombre must be a string");
+  }
+
+  if (cuerpo.descripcion !== undefined && typeof cuerpo.descripcion !== "string") {
+    return jsonValidacion("descripcion must be a string");
+  }
+
+  if (cuerpo.orden !== undefined) {
+    if (!Number.isInteger(cuerpo.orden)) {
+      return jsonValidacion("orden must be an integer number");
+    }
+
+    if (cuerpo.orden < 1) {
+      return jsonValidacion("orden must not be less than 1");
+    }
+  }
+
+  if (cuerpo.activo !== undefined && typeof cuerpo.activo !== "boolean") {
+    return jsonValidacion("activo must be a boolean value");
+  }
+
+  try {
+    const criterio = await actualizarCriterio(parseIdParam(id), cuerpo);
     return NextResponse.json(criterio);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

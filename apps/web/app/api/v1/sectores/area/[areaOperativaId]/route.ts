@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
-import { listarSectoresParaUsuario } from "@/lib/server/catalogo";
+import { parseIdParam, cuerpoErrorHttp } from "@/lib/errores";
+import { listarSectoresPorArea } from "@/lib/server/catalogo";
 
 export async function GET(
   _request: Request,
@@ -15,13 +15,13 @@ export async function GET(
   const { areaOperativaId } = await context.params;
 
   try {
-    const sectores = await listarSectoresParaUsuario(
+    const sectores = await listarSectoresPorArea(
       sesion,
-      Number(areaOperativaId),
+      parseIdParam(areaOperativaId),
     );
     return NextResponse.json(sectores);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    const { status, body } = cuerpoErrorHttp(error);
+    return NextResponse.json(body, { status });
   }
 }

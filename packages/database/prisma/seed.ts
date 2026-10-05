@@ -169,6 +169,15 @@ async function main() {
     }
   }
 
+  const cuantasRondas = await prisma.ronda.count();
+
+  if (cuantasRondas === 0) {
+    await prisma.ronda.create({
+      data: { nombre: "Ronda 1", activo: true },
+    });
+    console.log("Ronda inicial: Ronda 1");
+  }
+
   console.log("Seed finalizado correctamente.");
 }
 

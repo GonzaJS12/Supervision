@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin, requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { jsonError, jsonValidacion, jsonSiHayExtras } from "@/lib/errores";
 import { crearBloque, listarBloques } from "@/lib/server/evaluacion";
 
 export async function GET() {
@@ -9,7 +9,11 @@ export async function GET() {
     return sesion;
   }
 
-  return NextResponse.json(await listarBloques());
+  try {
+    return NextResponse.json(await listarBloques());
+  } catch (error) {
+    return jsonError(error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,17 +22,41 @@ export async function POST(request: Request) {
     return admin;
   }
 
-  const cuerpo = (await request.json()) as {
+  let cuerpo: {
     nombre?: string;
     descripcion?: string;
     orden?: number;
   };
 
-  if (!cuerpo.nombre || cuerpo.orden == null) {
-    return NextResponse.json(
-      { error: "Nombre y orden son obligatorios" },
-      { status: 400 },
-    );
+  try {
+    cuerpo = (await request.json()) as typeof cuerpo;
+  } catch {
+    return jsonValidacion("nombre should not be empty");
+  }
+
+  const extras = jsonSiHayExtras(cuerpo, ["nombre", "descripcion", "orden"]);
+  if (extras) {
+    return extras;
+  }
+
+  if (typeof cuerpo.nombre !== "string") {
+    return jsonValidacion("nombre must be a string");
+  }
+
+  if (cuerpo.nombre.length === 0) {
+    return jsonValidacion("nombre should not be empty");
+  }
+
+  if (typeof cuerpo.orden !== "number" || !Number.isInteger(cuerpo.orden)) {
+    return jsonValidacion("orden must be an integer number");
+  }
+
+  if (cuerpo.orden < 1) {
+    return jsonValidacion("orden must not be less than 1");
+  }
+
+  if (cuerpo.descripcion !== undefined && typeof cuerpo.descripcion !== "string") {
+    return jsonValidacion("descripcion must be a string");
   }
 
   try {
@@ -39,7 +67,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(bloque, { status: 201 });
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

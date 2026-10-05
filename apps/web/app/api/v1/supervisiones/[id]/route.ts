@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError } from "@/lib/errores";
 import { buscarSupervision } from "@/lib/server/supervisiones";
 
 export async function GET(
@@ -15,10 +15,9 @@ export async function GET(
   const { id } = await context.params;
 
   try {
-    const supervision = await buscarSupervision(sesion, Number(id));
+    const supervision = await buscarSupervision(sesion, parseIdParam(id));
     return NextResponse.json(supervision);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

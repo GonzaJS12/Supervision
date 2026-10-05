@@ -48,7 +48,7 @@ export function calcularPromedio(
       valor > 5
     ) {
       throw new Error(
-        "Cada puntuación debe ser un entero entre 1 y 5",
+        "La puntuación de cada criterio debe ser un número entero entre 1 y 5",
       );
     }
   }
@@ -71,3 +71,58 @@ export function hayCriteriosDuplicados(
     criterioIds.length
   );
 }
+
+export function pareceMojibake(valor: string) {
+  return /Ã.|Â[¡-ÿ]|â€/.test(valor);
+}
+
+export function repararTexto(
+  valor: string | null | undefined,
+): string | null | undefined {
+  if (valor == null) {
+    return valor;
+  }
+
+  if (valor === "" || !pareceMojibake(valor)) {
+    return valor;
+  }
+
+  let actual = valor;
+
+  for (let i = 0; i < 3; i++) {
+    if (!pareceMojibake(actual)) {
+      break;
+    }
+
+    const codes = [];
+    let valido = true;
+    for (const caracter of actual) {
+      const codigo = caracter.charCodeAt(0);
+      if (codigo > 255) {
+        valido = false;
+        break;
+      }
+      codes.push(codigo);
+    }
+
+    if (!valido) {
+      break;
+    }
+
+    const siguiente = new TextDecoder("utf-8", {
+      fatal: false,
+    }).decode(Uint8Array.from(codes));
+
+    if (
+      siguiente.includes("\uFFFD") ||
+      siguiente === actual
+    ) {
+      break;
+    }
+
+    actual = siguiente;
+  }
+
+  return actual;
+}
+

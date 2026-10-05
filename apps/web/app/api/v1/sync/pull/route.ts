@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { requerirSupervisor } from "@/lib/requerir";
+import { jsonError } from "@/lib/errores";
 import { obtenerPaqueteSync } from "@/lib/server/sync";
 
 export async function GET() {
-  const sesion = await requerirSesion();
+  const sesion = await requerirSupervisor();
   if (sesion instanceof NextResponse) {
     return sesion;
   }
@@ -13,7 +13,6 @@ export async function GET() {
     const paquete = await obtenerPaqueteSync(sesion);
     return NextResponse.json(paquete);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

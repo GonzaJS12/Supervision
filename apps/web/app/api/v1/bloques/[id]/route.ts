@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin, requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError, jsonValidacion, jsonSiHayExtras } from "@/lib/errores";
 import { actualizarBloque, buscarBloque } from "@/lib/server/evaluacion";
 
 export async function GET(
@@ -15,11 +15,10 @@ export async function GET(
   const { id } = await context.params;
 
   try {
-    const bloque = await buscarBloque(Number(id));
+    const bloque = await buscarBloque(parseIdParam(id));
     return NextResponse.json(bloque);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }
 
@@ -33,7 +32,7 @@ export async function PATCH(
   }
 
   const { id } = await context.params;
-  const cuerpo = (await request.json()) as {
+  let cuerpo: {
     nombre?: string;
     descripcion?: string | null;
     orden?: number;
@@ -41,10 +40,47 @@ export async function PATCH(
   };
 
   try {
-    const bloque = await actualizarBloque(Number(id), cuerpo);
+    cuerpo = (await request.json()) as typeof cuerpo;
+  } catch {
+    return jsonValidacion("nombre must be a string");
+  }
+
+  const extras = jsonSiHayExtras(cuerpo, [
+    "nombre",
+    "descripcion",
+    "orden",
+    "activo",
+  ]);
+  if (extras) {
+    return extras;
+  }
+
+  if (cuerpo.nombre !== undefined && typeof cuerpo.nombre !== "string") {
+    return jsonValidacion("nombre must be a string");
+  }
+
+  if (cuerpo.descripcion !== undefined && typeof cuerpo.descripcion !== "string") {
+    return jsonValidacion("descripcion must be a string");
+  }
+
+  if (cuerpo.orden !== undefined) {
+    if (!Number.isInteger(cuerpo.orden)) {
+      return jsonValidacion("orden must be an integer number");
+    }
+
+    if (cuerpo.orden < 1) {
+      return jsonValidacion("orden must not be less than 1");
+    }
+  }
+
+  if (cuerpo.activo !== undefined && typeof cuerpo.activo !== "boolean") {
+    return jsonValidacion("activo must be a boolean value");
+  }
+
+  try {
+    const bloque = await actualizarBloque(parseIdParam(id), cuerpo);
     return NextResponse.json(bloque);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

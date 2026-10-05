@@ -1,8 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-import { config } from 'dotenv';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { PrismaClient } from "@prisma/client";
+import { config } from "dotenv";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { repararTexto } from "@supervision/domain";
 
 const dirPrisma = path.dirname(fileURLToPath(import.meta.url));
 const raiz = path.resolve(dirPrisma, '../../..');
@@ -111,17 +112,22 @@ function convertirValor(valor: string): string | null {
     return null;
   }
 
+  let texto: string;
+
   if (
     limpio.startsWith("'") &&
     limpio.endsWith("'")
   ) {
-    return limpio
+    texto = limpio
       .slice(1, -1)
       .replace(/\\'/g, "'")
       .replace(/''/g, "'");
+  } else {
+    texto = limpio;
   }
 
-  return limpio;
+  const reparado = repararTexto(texto);
+  return reparado == null ? null : reparado;
 }
 
 /*

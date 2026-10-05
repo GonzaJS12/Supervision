@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
-import { obtenerTerritorio } from "@/lib/server/catalogo";
+import { parseIdParam, jsonError } from "@/lib/errores";
+import { listarAgentesPorArea } from "@/lib/server/agentes";
 
 export async function GET(
   _request: Request,
@@ -15,13 +15,12 @@ export async function GET(
   const { areaOperativaId } = await context.params;
 
   try {
-    const { agentes } = await obtenerTerritorio(
+    const agentes = await listarAgentesPorArea(
       sesion,
-      Number(areaOperativaId),
+      parseIdParam(areaOperativaId),
     );
     return NextResponse.json(agentes);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

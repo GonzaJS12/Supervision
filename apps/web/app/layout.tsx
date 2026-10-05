@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Supervisión APS",
-  description:
-    "Sistema de supervisión de agentes sanitarios",
+  title: "Supervisión de Agentes Sanitarios",
+  description: "Sistema de Supervisión de Agentes Sanitarios",
 };
 
 export default function RootLayout({

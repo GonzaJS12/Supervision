@@ -10,3 +10,24 @@ body {
   color: var(--foreground);
   font-family: system-ui, sans-serif;
 }
+
+@layer base {
+  button:not(:disabled) {
+    cursor: pointer;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      filter 150ms ease;
+  }
+
+  button:not(:disabled):hover {
+    filter: brightness(0.93);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+  }
+
+  button:not(:disabled):active {
+    filter: brightness(0.88);
+  }
+}

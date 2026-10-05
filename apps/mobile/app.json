@@ -6,6 +6,9 @@
     "orientation": "portrait",
     "scheme": "supervisionaps",
     "userInterfaceStyle": "light",
+    "android": {
+      "usesCleartextTraffic": true
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",

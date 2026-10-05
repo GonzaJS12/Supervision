@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError, jsonValidacion } from "@/lib/errores";
 import { obtenerTerritorio } from "@/lib/server/catalogo";
 
 export async function GET(request: NextRequest) {
@@ -9,22 +9,16 @@ export async function GET(request: NextRequest) {
     return sesion;
   }
 
-  const areaOperativaId = Number(
-    request.nextUrl.searchParams.get("areaOperativaId"),
-  );
+  const bruto = request.nextUrl.searchParams.get("areaOperativaId");
 
-  if (!areaOperativaId) {
-    return NextResponse.json(
-      { error: "Debe indicar un área operativa" },
-      { status: 400 },
-    );
+  if (!bruto || !/^\d+$/.test(bruto)) {
+    return jsonValidacion("areaOperativaId must be an integer number");
   }
 
   try {
-    const territorio = await obtenerTerritorio(sesion, areaOperativaId);
+    const territorio = await obtenerTerritorio(sesion, parseIdParam(bruto));
     return NextResponse.json(territorio);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { requerirAdmin, requerirSesion } from "@/lib/requerir";
+import { jsonError, jsonSiHayExtras, jsonValidacion, ErrorNegocio } from "@/lib/errores";
 import {
   crearSupervision,
   listarSupervisiones,
@@ -8,7 +8,7 @@ import {
 import type { DecisionGestion } from "@supervision/domain";
 
 export async function GET(request: NextRequest) {
-  const sesion = await requerirSesion();
+  const sesion = await requerirAdmin();
   if (sesion instanceof NextResponse) {
     return sesion;
   }
@@ -18,6 +18,9 @@ export async function GET(request: NextRequest) {
   try {
     const resultado = await listarSupervisiones(sesion, {
       page: Number(params.get("page") ?? 1),
+      limit: params.get("limit")
+        ? Number(params.get("limit"))
+        : undefined,
       fechaDesde: params.get("fechaDesde") ?? undefined,
       fechaHasta: params.get("fechaHasta") ?? undefined,
       clasificacion: params.get("clasificacion") ?? undefined,
@@ -25,8 +28,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(resultado);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }
 
@@ -36,7 +38,16 @@ export async function POST(request: Request) {
     return sesion;
   }
 
-  const cuerpo = (await request.json()) as {
+  if (sesion.rol !== "ADMIN" && sesion.rol !== "SUPERVISOR") {
+    return jsonError(
+      new ErrorNegocio(
+        "No tiene permiso para realizar esta operacion",
+        403,
+      ),
+    );
+  }
+
+  let cuerpo: {
     agenteSanitarioId?: number;
     areaOperativaId?: number;
     sectorId?: number | null;
@@ -51,17 +62,126 @@ export async function POST(request: Request) {
     evaluaciones?: Array<{ criterioId: number; puntuacion: number }>;
   };
 
+  try {
+    cuerpo = (await request.json()) as typeof cuerpo;
+  } catch {
+    return jsonValidacion("agenteSanitarioId must be an integer number");
+  }
+
+  const extras = jsonSiHayExtras(cuerpo, [
+    "agenteSanitarioId",
+    "areaOperativaId",
+    "sectorId",
+    "rondaId",
+    "fecha",
+    "familiaNumero",
+    "decisionGestion",
+    "fortalezas",
+    "oportunidadesMejora",
+    "situacionesCriticas",
+    "recomendaciones",
+    "evaluaciones",
+  ]);
+  if (extras) {
+    return extras;
+  }
+
+  if (!Number.isInteger(cuerpo.agenteSanitarioId)) {
+    return jsonValidacion("agenteSanitarioId must be an integer number");
+  }
+
+  if ((cuerpo.agenteSanitarioId ?? 0) < 1) {
+    return jsonValidacion("agenteSanitarioId must not be less than 1");
+  }
+
+  if (!Number.isInteger(cuerpo.areaOperativaId)) {
+    return jsonValidacion("areaOperativaId must be an integer number");
+  }
+
+  if ((cuerpo.areaOperativaId ?? 0) < 1) {
+    return jsonValidacion("areaOperativaId must not be less than 1");
+  }
+
+  if (!Number.isInteger(cuerpo.rondaId)) {
+    return jsonValidacion("rondaId must be an integer number");
+  }
+
+  if ((cuerpo.rondaId ?? 0) < 1) {
+    return jsonValidacion("rondaId must not be less than 1");
+  }
+
+  if (!cuerpo.fecha || Number.isNaN(Date.parse(cuerpo.fecha))) {
+    return jsonValidacion("fecha must be a valid ISO 8601 date string");
+  }
+
   if (
-    !cuerpo.agenteSanitarioId ||
-    !cuerpo.areaOperativaId ||
-    !cuerpo.rondaId ||
-    !cuerpo.fecha ||
-    !cuerpo.decisionGestion
+    cuerpo.decisionGestion !== "NO_REQUIERE" &&
+    cuerpo.decisionGestion !== "SEGUIMIENTO" &&
+    cuerpo.decisionGestion !== "CAPACITACION" &&
+    cuerpo.decisionGestion !== "SUPERVISION_INTENSIVA"
   ) {
-    return NextResponse.json(
-      { error: "Faltan datos obligatorios" },
-      { status: 400 },
+    return jsonValidacion(
+      "decisionGestion must be one of the following values: NO_REQUIERE, SEGUIMIENTO, CAPACITACION, SUPERVISION_INTENSIVA",
     );
+  }
+
+  if (!Array.isArray(cuerpo.evaluaciones) || cuerpo.evaluaciones.length === 0) {
+    return jsonValidacion("evaluaciones should not be empty");
+  }
+
+  if (cuerpo.sectorId != null) {
+    if (!Number.isInteger(cuerpo.sectorId)) {
+      return jsonValidacion("sectorId must be an integer number");
+    }
+
+    if (cuerpo.sectorId < 1) {
+      return jsonValidacion("sectorId must not be less than 1");
+    }
+  }
+
+  if (cuerpo.familiaNumero != null) {
+    if (!Number.isInteger(cuerpo.familiaNumero)) {
+      return jsonValidacion("familiaNumero must be an integer number");
+    }
+
+    if (cuerpo.familiaNumero < 1) {
+      return jsonValidacion("familiaNumero must not be less than 1");
+    }
+  }
+
+  for (const evaluacion of cuerpo.evaluaciones) {
+    if (!Number.isInteger(evaluacion.criterioId)) {
+      return jsonValidacion("criterioId must be an integer number");
+    }
+
+    if ((evaluacion.criterioId ?? 0) < 1) {
+      return jsonValidacion("criterioId must not be less than 1");
+    }
+
+    if (!Number.isInteger(evaluacion.puntuacion)) {
+      return jsonValidacion("puntuacion must be an integer number");
+    }
+
+    if (evaluacion.puntuacion < 1) {
+      return jsonValidacion("puntuacion must not be less than 1");
+    }
+
+    if (evaluacion.puntuacion > 5) {
+      return jsonValidacion("puntuacion must not be greater than 5");
+    }
+  }
+
+  const camposTexto = [
+    ["fortalezas", cuerpo.fortalezas],
+    ["oportunidadesMejora", cuerpo.oportunidadesMejora],
+    ["situacionesCriticas", cuerpo.situacionesCriticas],
+    ["recomendaciones", cuerpo.recomendaciones],
+  ] as const;
+
+  for (const [campo, valor] of camposTexto) {
+    if (valor !== undefined && typeof valor !== "string") {
+      return jsonValidacion(`${campo} must be a string`);
+    }
   }
 
   try {
@@ -82,7 +202,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(supervision, { status: 201 });
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

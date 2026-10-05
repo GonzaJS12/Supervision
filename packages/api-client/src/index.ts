@@ -14,6 +14,7 @@ export type UsuarioSesion = {
 
 export type LoginRespuesta = {
   token: string;
+  accessToken?: string;
   usuario: UsuarioSesion;
 };
 
@@ -46,6 +47,18 @@ export type PaqueteSync = {
     cobertura: string | null;
     areaOperativaId: number;
   }>;
+  supervisiones: Array<{
+    id: number;
+    fecha: Date | string;
+    promedio: number | null;
+    clasificacion: string | null;
+    decisionGestion: string;
+    agenteSanitario: {
+      id: number;
+      nombre: string;
+      apellido: string;
+    };
+  }>;
   pulledAt: string;
 };
 
@@ -65,6 +78,17 @@ export type PendienteSync = {
   evaluaciones: Array<{ criterioId: number; puntuacion: number }>;
 };
 
+export class ErrorApi extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public path: string,
+  ) {
+    super(message);
+    this.name = "ErrorApi";
+  }
+}
+
 export function crearClienteApi(
   baseUrl: string,
   getToken?: () => string | null | Promise<string | null>,
@@ -74,8 +98,10 @@ export function crearClienteApi(
   async function request<T>(
     path: string,
     init?: RequestInit,
+    opciones?: { conToken?: boolean },
   ): Promise<T> {
-    const token = await getToken?.();
+    const token =
+      opciones?.conToken === false ? null : await getToken?.();
 
     const response = await fetch(`${url}${path}`, {
       ...init,
@@ -86,14 +112,45 @@ export function crearClienteApi(
       },
     });
 
-    const datos = (await response.json().catch(() => ({}))) as T & {
+    const texto = await response.text();
+    let datos = {} as T & {
       error?: string;
+      message?: string | string[];
     };
 
+    if (texto) {
+      try {
+        datos = JSON.parse(texto) as typeof datos;
+      } catch {
+        throw new ErrorApi(
+          `Respuesta no JSON: ${texto.slice(0, 180)}`,
+          response.status,
+          path,
+        );
+      }
+    }
+
     if (!response.ok) {
-      throw new Error(
-        datos.error ?? `API ${response.status}: ${path}`,
-      );
+      const mensaje =
+        Array.isArray(datos.message) && datos.message.length > 0
+          ? datos.message.filter((item) => typeof item === "string").join(", ")
+          : typeof datos.message === "string" && datos.message.length > 0
+            ? datos.message
+            : typeof datos.error === "string" &&
+                datos.error.length > 0 &&
+                ![
+                  "Bad Request",
+                  "Unauthorized",
+                  "Forbidden",
+                  "Not Found",
+                  "Conflict",
+                  "Internal Server Error",
+                  "Too Many Requests",
+                ].includes(datos.error)
+              ? datos.error
+              : `API ${response.status}: ${path}`;
+
+      throw new ErrorApi(mensaje, response.status, path);
     }
 
     return datos;
@@ -103,9 +160,29 @@ export function crearClienteApi(
     health: () =>
       request<{ status: string; db?: string }>("/api/v1/health"),
     login: (datos: LoginPayload) =>
-      request<LoginRespuesta>("/api/v1/auth/login", {
-        method: "POST",
-        body: JSON.stringify(datos),
+      request<LoginRespuesta>(
+        "/api/v1/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            email: datos.email.trim().toLowerCase(),
+            password: datos.password,
+          }),
+        },
+        { conToken: false },
+      ).then((respuesta) => {
+        const token = respuesta.token || respuesta.accessToken || "";
+        if (!token || !respuesta.usuario) {
+          throw new ErrorApi(
+            "La API no devolvió token o usuario",
+            200,
+            "/api/v1/auth/login",
+          );
+        }
+        return {
+          ...respuesta,
+          token,
+        };
       }),
     pull: () => request<PaqueteSync>("/api/v1/sync/pull"),
     push: (pendientes: PendienteSync[]) =>
@@ -120,7 +197,7 @@ export function crearClienteApi(
         method: "POST",
         body: JSON.stringify({ pendientes }),
       }),
-    me: () => request<{ usuario: UsuarioSesion }>("/api/v1/auth/me"),
+    me: () => request<UsuarioSesion>("/api/v1/auth/me"),
     rondas: () => request("/api/v1/rondas"),
     zonas: () => request("/api/v1/zonas"),
     areas: () => request("/api/v1/areas"),
@@ -135,5 +212,13 @@ export function crearClienteApi(
     criteriosPorBloque: (bloqueId: number) =>
       request(`/api/v1/criterios/bloque/${bloqueId}`),
     agente: (id: number) => request(`/api/v1/agentes/${id}`),
+    supervisionesPorAgente: (agenteId: number) =>
+      request(`/api/v1/supervisiones/agente/${agenteId}`),
+    misSupervisiones: (query = "") =>
+      request(`/api/v1/supervisiones/mis-supervisiones${query}`),
+    supervision: (id: number) => request(`/api/v1/supervisiones/${id}`),
+    exportacion: () => request("/api/v1/supervisiones/exportacion"),
+    misMetricas: () => request("/api/v1/supervisiones/mis-metricas"),
+    metricas: () => request("/api/v1/supervisiones/metricas"),
   };
 }

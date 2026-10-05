@@ -10,7 +10,6 @@ import {
 } from "@supervision/domain";
 import type { SesionUsuario } from "@/lib/auth";
 import { ErrorNegocio } from "@/lib/errores";
-import { buscarAgente } from "@/lib/server/agentes";
 
 const decisiones: DecisionGestion[] = [
   "NO_REQUIERE",
@@ -45,25 +44,81 @@ const includeListado = {
     },
   },
   areaOperativa: {
+    select: {
+      id: true,
+      nombre: true,
+    },
+  },
+  sector: {
+    select: { id: true, numero: true, nombre: true },
+  },
+  ronda: {
+    select: { id: true, externalRondaId: true, nombre: true },
+  },
+} as const;
+
+const includeCreacion = {
+  agenteSanitario: true,
+  supervisor: {
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      rol: true,
+    },
+  },
+  areaOperativa: true,
+  sector: true,
+  ronda: true,
+} as const;
+
+const includeMetricasSupervisor = {
+  agenteSanitario: {
+    select: { id: true, nombre: true, apellido: true },
+  },
+  areaOperativa: {
     select: { id: true, nombre: true },
   },
   sector: {
     select: { id: true, numero: true, nombre: true },
   },
   ronda: {
-    select: { id: true, nombre: true },
+    select: { id: true, externalRondaId: true, nombre: true },
   },
 } as const;
+
+const includeMetricasAdmin = {
+  ...includeMetricasSupervisor,
+  supervisor: {
+    select: { id: true, nombre: true, apellido: true },
+  },
+} as const;
+
+function decimalComoNest(valor: unknown) {
+  if (valor == null) {
+    return null;
+  }
+
+  if (
+    typeof valor === "object" &&
+    valor !== null &&
+    "toFixed" in valor &&
+    typeof valor.toFixed === "function"
+  ) {
+    return valor.toFixed(2);
+  }
+
+  const numero = Number(valor);
+  return Number.isNaN(numero) ? null : numero.toFixed(2);
+}
 
 function serializarSupervision<T extends { promedio: unknown }>(
   supervision: T,
 ) {
   return {
     ...supervision,
-    promedio:
-      supervision.promedio == null
-        ? null
-        : Number(supervision.promedio),
+    promedio: decimalComoNest(supervision.promedio),
   };
 }
 
@@ -191,6 +246,13 @@ export async function crearSupervision(
     }
   }
 
+  if (
+    dto.familiaNumero != null &&
+    (!Number.isInteger(dto.familiaNumero) || dto.familiaNumero < 1)
+  ) {
+    throw new ErrorNegocio("El número de familia debe ser un entero mayor a 0");
+  }
+
   if (!dto.evaluaciones?.length) {
     throw new ErrorNegocio(
       "La supervisión debe tener al menos una evaluación",
@@ -199,9 +261,26 @@ export async function crearSupervision(
 
   const criterioIds = dto.evaluaciones.map((item) => item.criterioId);
 
+  if (criterioIds.some((id) => !Number.isInteger(id) || id < 1)) {
+    throw new ErrorNegocio("Cada criterio debe tener un identificador válido");
+  }
+
   if (hayCriteriosDuplicados(criterioIds)) {
     throw new ErrorNegocio(
       "No se puede evaluar el mismo criterio más de una vez",
+    );
+  }
+
+  const puntuacionInvalida = dto.evaluaciones.some(
+    (evaluacion) =>
+      !Number.isInteger(evaluacion.puntuacion) ||
+      evaluacion.puntuacion < 1 ||
+      evaluacion.puntuacion > 5,
+  );
+
+  if (puntuacionInvalida) {
+    throw new ErrorNegocio(
+      "La puntuación de cada criterio debe ser un número entero entre 1 y 5",
     );
   }
 
@@ -211,6 +290,7 @@ export async function crearSupervision(
 
   const criterios = await prisma.criterioEvaluacion.findMany({
     where: { id: { in: criterioIds }, activo: true },
+    orderBy: [{ bloque: { orden: "asc" } }, { orden: "asc" }],
   });
 
   if (criterios.length !== criterioIds.length) {
@@ -219,9 +299,19 @@ export async function crearSupervision(
     );
   }
 
-  const promedioRedondeado = calcularPromedio(
-    dto.evaluaciones.map((item) => item.puntuacion),
-  );
+  const promedioRedondeado = (() => {
+    try {
+      return calcularPromedio(
+        dto.evaluaciones.map((item) => item.puntuacion),
+      );
+    } catch (error) {
+      throw new ErrorNegocio(
+        error instanceof Error
+          ? error.message
+          : "La puntuación de cada criterio debe ser un número entero entre 1 y 5",
+      );
+    }
+  })();
   const clasificacion = calcularClasificacion(promedioRedondeado);
   const fecha = new Date(dto.fecha);
 
@@ -241,10 +331,10 @@ export async function crearSupervision(
       decisionGestion: dto.decisionGestion,
       promedio: new Prisma.Decimal(promedioRedondeado),
       clasificacion,
-      fortalezas: dto.fortalezas || null,
-      oportunidadesMejora: dto.oportunidadesMejora || null,
-      situacionesCriticas: dto.situacionesCriticas || null,
-      recomendaciones: dto.recomendaciones || null,
+      fortalezas: dto.fortalezas,
+      oportunidadesMejora: dto.oportunidadesMejora,
+      situacionesCriticas: dto.situacionesCriticas,
+      recomendaciones: dto.recomendaciones,
       evaluaciones: {
         create: dto.evaluaciones.map((evaluacion) => {
           const criterio = criterios.find(
@@ -261,7 +351,7 @@ export async function crearSupervision(
       },
     },
     include: {
-      ...includeListado,
+      ...includeCreacion,
       evaluaciones: { orderBy: { id: "asc" } },
     },
   });
@@ -328,14 +418,20 @@ export async function listarSupervisiones(
   sesion: SesionUsuario,
   params: {
     page?: number;
+    limit?: number;
     fechaDesde?: string;
     fechaHasta?: string;
     clasificacion?: string;
   },
 ) {
   const pagina =
-    params.page && params.page > 0 ? Math.floor(params.page) : 1;
-  const limite = LIMITE_POR_PAGINA;
+    Number.isFinite(params.page) && (params.page ?? 0) > 0
+      ? Math.floor(params.page as number)
+      : 1;
+  const limite =
+    Number.isFinite(params.limit) && (params.limit ?? 0) > 0
+      ? Math.min(Math.floor(params.limit as number), LIMITE_POR_PAGINA)
+      : LIMITE_POR_PAGINA;
   const where = construirFiltros(params);
 
   if (sesion.rol === "SUPERVISOR") {
@@ -376,7 +472,18 @@ export async function buscarSupervision(
         : {}),
     },
     include: {
-      ...includeListado,
+      agenteSanitario: true,
+      supervisor: {
+        select: {
+          id: true,
+          nombre: true,
+          apellido: true,
+          email: true,
+        },
+      },
+      areaOperativa: true,
+      sector: true,
+      ronda: true,
       evaluaciones: { orderBy: { id: "asc" } },
     },
   });
@@ -395,7 +502,43 @@ export async function listarSupervisionesPorAgente(
   sesion: SesionUsuario,
   agenteSanitarioId: number,
 ) {
-  await buscarAgente(sesion, agenteSanitarioId);
+  const agente = await prisma.agenteSanitario.findUnique({
+    where: { id: agenteSanitarioId },
+    select: { id: true, areaOperativaId: true },
+  });
+
+  if (!agente) {
+    throw new ErrorNegocio("El agente sanitario no existe", 404);
+  }
+
+  if (sesion.rol === "SUPERVISOR") {
+    const supervisor = await prisma.usuario.findUnique({
+      where: { id: sesion.id },
+      select: { id: true, activo: true, rol: true, areaOperativaId: true },
+    });
+
+    if (
+      !supervisor ||
+      !supervisor.activo ||
+      supervisor.rol !== "SUPERVISOR"
+    ) {
+      throw new ErrorNegocio(
+        "El usuario no existe o no está habilitado",
+        404,
+      );
+    }
+
+    if (supervisor.areaOperativaId === null) {
+      throw new ErrorNegocio(
+        "El supervisor no tiene un área operativa asignada",
+        403,
+      );
+    }
+
+    if (agente.areaOperativaId !== supervisor.areaOperativaId) {
+      throw new ErrorNegocio("El agente sanitario no existe", 404);
+    }
+  }
 
   const data = await prisma.supervision.findMany({
     where: {
@@ -477,13 +620,20 @@ export async function obtenerMetricas(sesion: SesionUsuario) {
       where: filtroSupervisor,
       take: 10,
       orderBy: [{ fecha: "desc" }, { id: "desc" }],
-      include: includeListado,
+      include:
+        sesion.rol === "ADMIN"
+          ? includeMetricasAdmin
+          : includeMetricasSupervisor,
     }),
   ]);
 
   return {
-    totalAgentes,
-    totalAgentesActivos,
+    ...(sesion.rol === "ADMIN"
+      ? {
+          totalAgentes,
+          totalAgentesActivos,
+        }
+      : {}),
     totalSupervisiones,
     supervisionesMes,
     promedioGeneral: promedio._avg.promedio

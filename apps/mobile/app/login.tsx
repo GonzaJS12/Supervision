@@ -7,13 +7,13 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { clienteApi } from "../src/api";
-import { API_URL } from "../src/config";
 import { guardarSesion } from "../src/auth/storage";
 import { pullCatalogos } from "../src/sync/pull";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verPassword, setVerPassword] = useState(false);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -23,7 +23,7 @@ export default function LoginScreen() {
 
     try {
       const { token, usuario } = await clienteApi().login({
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password,
       });
 
@@ -34,36 +34,62 @@ export default function LoginScreen() {
       }
 
       await guardarSesion(token, usuario);
-      await pullCatalogos();
+      try {
+        await pullCatalogos();
+      } catch {
+        setError("No se pudieron cargar los datos del territorio.");
+        setCargando(false);
+        return;
+      }
       router.replace("/(campo)");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo ingresar");
+    } catch {
+      setError("Correo o contraseña incorrectos.");
       setCargando(false);
     }
   }
 
   return (
     <View style={{ flex: 1, padding: 24, gap: 12, justifyContent: "center" }}>
-      <Text style={{ fontSize: 22, fontWeight: "600" }}>Ingresar</Text>
-      <Text style={{ color: "#64748b" }}>API: {API_URL}</Text>
+      <Text style={{ fontSize: 22, fontWeight: "600" }}>Iniciar sesión</Text>
+      <Text style={{ color: "#2563eb", fontWeight: "600" }}>Bienvenido</Text>
+      <Text style={{ color: "#64748b" }}>
+        Ingresá tus credenciales para acceder al sistema de supervisión.
+      </Text>
       {error ? (
         <Text style={{ color: "#b91c1c" }}>{error}</Text>
       ) : null}
+      <Text>Correo electrónico</Text>
       <TextInput
         autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
         keyboardType="email-address"
-        placeholder="Email"
+        placeholder="nombre@correo.com"
         value={email}
         onChangeText={setEmail}
         style={campo}
       />
-      <TextInput
-        secureTextEntry
-        placeholder="Contraseña"
-        value={password}
-        onChangeText={setPassword}
-        style={campo}
-      />
+      <Text>Contraseña</Text>
+      <View style={{ position: "relative" }}>
+        <TextInput
+          key={verPassword ? "visible" : "oculta"}
+          secureTextEntry={!verPassword}
+          placeholder="Ingresá tu contraseña"
+          value={password}
+          onChangeText={setPassword}
+          autoCorrect={false}
+          autoCapitalize="none"
+          style={{ ...campo, paddingRight: 88 }}
+        />
+        <Pressable
+          onPress={() => setVerPassword((actual) => !actual)}
+          style={{ position: "absolute", right: 12, top: 14 }}
+        >
+          <Text style={{ color: "#2563eb", fontWeight: "600" }}>
+            {verPassword ? "Ocultar" : "Mostrar"}
+          </Text>
+        </Pressable>
+      </View>
       <Pressable
         onPress={() => void ingresar()}
         disabled={cargando}
@@ -75,7 +101,7 @@ export default function LoginScreen() {
         }}
       >
         <Text style={{ color: "white", textAlign: "center" }}>
-          {cargando ? "Ingresando..." : "Entrar y sincronizar catálogo"}
+          {cargando ? "Ingresando..." : "Ingresar al sistema"}
         </Text>
       </Pressable>
     </View>

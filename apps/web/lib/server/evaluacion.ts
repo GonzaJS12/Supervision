@@ -57,19 +57,22 @@ export async function crearBloque(datos: {
   descripcion?: string | null;
   orden: number;
 }) {
-  const nombre = datos.nombre.trim();
+  const nombre = datos.nombre;
+  if (!Number.isInteger(datos.orden) || datos.orden < 1) {
+    throw new ErrorNegocio("El orden debe ser un entero mayor a 0");
+  }
   const existente = await prisma.bloqueEvaluacion.findUnique({
     where: { nombre },
   });
 
   if (existente) {
-    throw new ErrorNegocio("Ya existe un bloque con ese nombre");
+    throw new ErrorNegocio("Ya existe un bloque con ese nombre", 409);
   }
 
   return prisma.bloqueEvaluacion.create({
     data: {
       nombre,
-      descripcion: datos.descripcion?.trim() || null,
+      descripcion: datos.descripcion,
       orden: datos.orden,
     },
   });
@@ -92,22 +95,29 @@ export async function actualizarBloque(
     throw new ErrorNegocio("El bloque de evaluación no existe", 404);
   }
 
-  if (datos.nombre) {
+  if (datos.nombre !== undefined) {
     const existente = await prisma.bloqueEvaluacion.findFirst({
-      where: { nombre: datos.nombre.trim(), NOT: { id } },
+      where: { nombre: datos.nombre, NOT: { id } },
     });
 
     if (existente) {
-      throw new ErrorNegocio("Ya existe otro bloque con ese nombre");
+      throw new ErrorNegocio("Ya existe otro bloque con ese nombre", 409);
     }
+  }
+
+  if (
+    datos.orden !== undefined &&
+    (!Number.isInteger(datos.orden) || datos.orden < 1)
+  ) {
+    throw new ErrorNegocio("El orden debe ser un entero mayor a 0");
   }
 
   return prisma.bloqueEvaluacion.update({
     where: { id },
     data: {
-      ...(datos.nombre ? { nombre: datos.nombre.trim() } : {}),
+      ...(datos.nombre !== undefined ? { nombre: datos.nombre } : {}),
       ...(datos.descripcion !== undefined
-        ? { descripcion: datos.descripcion?.trim() || null }
+        ? { descripcion: datos.descripcion }
         : {}),
       ...(datos.orden !== undefined ? { orden: datos.orden } : {}),
       ...(datos.activo !== undefined ? { activo: datos.activo } : {}),
@@ -121,6 +131,10 @@ export async function crearCriterio(datos: {
   descripcion?: string | null;
   orden: number;
 }) {
+  if (!Number.isInteger(datos.orden) || datos.orden < 1) {
+    throw new ErrorNegocio("El orden debe ser un entero mayor a 0");
+  }
+
   const bloque = await prisma.bloqueEvaluacion.findUnique({
     where: { id: datos.bloqueId },
   });
@@ -132,8 +146,8 @@ export async function crearCriterio(datos: {
   return prisma.criterioEvaluacion.create({
     data: {
       bloqueId: datos.bloqueId,
-      nombre: datos.nombre.trim(),
-      descripcion: datos.descripcion?.trim() || null,
+      nombre: datos.nombre,
+      descripcion: datos.descripcion,
       orden: datos.orden,
     },
   });
@@ -167,13 +181,20 @@ export async function actualizarCriterio(
     }
   }
 
+  if (
+    datos.orden !== undefined &&
+    (!Number.isInteger(datos.orden) || datos.orden < 1)
+  ) {
+    throw new ErrorNegocio("El orden debe ser un entero mayor a 0");
+  }
+
   return prisma.criterioEvaluacion.update({
     where: { id },
     data: {
-      ...(datos.bloqueId ? { bloqueId: datos.bloqueId } : {}),
-      ...(datos.nombre ? { nombre: datos.nombre.trim() } : {}),
+      ...(datos.bloqueId !== undefined ? { bloqueId: datos.bloqueId } : {}),
+      ...(datos.nombre !== undefined ? { nombre: datos.nombre } : {}),
       ...(datos.descripcion !== undefined
-        ? { descripcion: datos.descripcion?.trim() || null }
+        ? { descripcion: datos.descripcion }
         : {}),
       ...(datos.orden !== undefined ? { orden: datos.orden } : {}),
       ...(datos.activo !== undefined ? { activo: datos.activo } : {}),

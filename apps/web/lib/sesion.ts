@@ -1,25 +1,72 @@
 import { cookies, headers } from "next/headers";
-import { COOKIE_SESION, leerSesion } from "./auth";
+import { prisma } from "@supervision/database";
+import { COOKIE_SESION, leerSesion, type SesionUsuario } from "./auth";
 
-export async function obtenerSesion() {
+export type ResultadoAuth =
+  | { sesion: SesionUsuario }
+  | { error: string; status: 401 };
+
+export async function resolverAuth(): Promise<ResultadoAuth> {
   const cabeceras = await headers();
   const authorization = cabeceras.get("authorization");
 
+  let token: string | undefined;
+
   if (authorization?.toLowerCase().startsWith("bearer ")) {
-    const token = authorization.slice(7).trim();
-    const sesion = token ? await leerSesion(token) : null;
-
-    if (sesion) {
-      return sesion;
-    }
+    token = authorization.slice(7).trim();
   }
-
-  const jar = await cookies();
-  const token = jar.get(COOKIE_SESION)?.value;
 
   if (!token) {
-    return null;
+    const jar = await cookies();
+    token = jar.get(COOKIE_SESION)?.value;
   }
 
-  return leerSesion(token);
+  if (!token) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  const sesion = await leerSesion(token);
+
+  if (!sesion) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: sesion.id },
+    select: {
+      id: true,
+      nombre: true,
+      apellido: true,
+      email: true,
+      rol: true,
+      activo: true,
+      areaOperativaId: true,
+      areaOperativa: { select: { nombre: true } },
+    },
+  });
+
+  if (!usuario) {
+    return { error: "Usuario no encontrado", status: 401 };
+  }
+
+  if (!usuario.activo) {
+    return { error: "Usuario inactivo", status: 401 };
+  }
+
+  return {
+    sesion: {
+      id: usuario.id,
+      email: usuario.email,
+      rol: usuario.rol,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      areaOperativaId: usuario.areaOperativaId,
+      areaOperativaNombre: usuario.areaOperativa?.nombre ?? null,
+    },
+  };
+}
+
+export async function obtenerSesion(): Promise<SesionUsuario | null> {
+  const resultado = await resolverAuth();
+  return "sesion" in resultado ? resultado.sesion : null;
 }

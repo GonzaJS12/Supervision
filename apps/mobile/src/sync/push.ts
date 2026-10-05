@@ -1,9 +1,16 @@
 import type { PendienteSync } from "@supervision/api-client";
 import { clienteApi } from "../api";
 import { obtenerDb } from "../db/database";
+import { buscarAgenteLocal } from "../db/consultas";
 
 export async function listarPendientes(): Promise<
-  Array<{ localId: string; estado: string; error: string | null; payload: PendienteSync }>
+  Array<{
+    localId: string;
+    estado: string;
+    error: string | null;
+    payload: PendienteSync;
+    nombreAgente: string;
+  }>
 > {
   const db = await obtenerDb();
   const filas = await db.getAllAsync<{
@@ -13,12 +20,21 @@ export async function listarPendientes(): Promise<
     error: string | null;
   }>("SELECT local_id, payload, estado, error FROM pendientes ORDER BY created_at DESC");
 
-  return filas.map((fila) => ({
-    localId: fila.local_id,
-    estado: fila.estado,
-    error: fila.error,
-    payload: JSON.parse(fila.payload) as PendienteSync,
-  }));
+  const items = [];
+  for (const fila of filas) {
+    const payload = JSON.parse(fila.payload) as PendienteSync;
+    const agente = await buscarAgenteLocal(payload.agenteSanitarioId);
+    items.push({
+      localId: fila.local_id,
+      estado: fila.estado,
+      error: fila.error,
+      payload,
+      nombreAgente: agente
+        ? `${agente.apellido}, ${agente.nombre}`
+        : `Agente #${payload.agenteSanitarioId}`,
+    });
+  }
+  return items;
 }
 
 export async function guardarPendiente(payload: PendienteSync) {

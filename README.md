@@ -26,3 +26,15 @@ Móvil (en otra terminal):
 ```bash
 npm run dev:mobile
 ```
+
+La web queda escuchando en `0.0.0.0:3000` para poder entrar desde otro equipo o el celular en la misma red (`http://IP-LAN:3000`). En desarrollo, Expo toma la IP del bundler si no hay `EXPO_PUBLIC_API_URL`. En producción configure `CORS_ORIGINS` (orígenes separados por coma); el Bearer del móvil no usa cookie.
+
+```bash
+npm run ci
+```
+
+Ese comando corre las pruebas de dominio y `tsc` de la web.
+
+Si aparecen nombres con caracteres raros (`AcuÃ±a` en vez de `Acuña`), corra `npm run db:reparar:texto` y en la app pulse **Sincronizar**.
+
+PDF en el celular: Inicio y Mis supervisiones exportan el reporte; el detalle de una supervisión exporta esa ficha.

@@ -3,8 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DecisionGestion } from "@supervision/domain";
-import { calcularClasificacion, calcularPromedio } from "@supervision/domain";
-import { etiquetasClasificacion, etiquetasGestion } from "@/lib/etiquetas";
+import { calcularClasificacion } from "@supervision/domain";
+import { extraerMensajeApi } from "@/lib/mensaje-api";
+import { etiquetasClasificacion, etiquetasGestion, ayudasGestion, escalaPuntuacion } from "@/lib/etiquetas";
 
 type Area = { id: number; nombre: string };
 type Ronda = { id: number; nombre: string };
@@ -28,6 +29,9 @@ type Agente = {
   apellido: string;
   sectorId: number | null;
   areaOperativaId: number;
+  documento?: string | null;
+  cobertura?: string | null;
+  activo?: boolean;
 };
 
 const decisiones: DecisionGestion[] = [
@@ -37,11 +41,52 @@ const decisiones: DecisionGestion[] = [
   "SUPERVISION_INTENSIVA",
 ];
 
+function hoyEnDdMmAaaa() {
+  const hoy = new Date();
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  return `${dia}/${mes}/${hoy.getFullYear()}`;
+}
+
+function enmascararFecha(valor: string) {
+  const digitos = valor.replace(/\D/g, "").slice(0, 8);
+  if (digitos.length <= 2) {
+    return digitos;
+  }
+  if (digitos.length <= 4) {
+    return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+  }
+  return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+}
+
+function isoDesdeDdMmAaaa(texto: string) {
+  const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
+  if (!partes) {
+    return null;
+  }
+
+  const dia = Number(partes[1]);
+  const mes = Number(partes[2]);
+  const anio = Number(partes[3]);
+  const fecha = new Date(anio, mes - 1, dia);
+
+  if (
+    fecha.getFullYear() !== anio ||
+    fecha.getMonth() !== mes - 1 ||
+    fecha.getDate() !== dia
+  ) {
+    return null;
+  }
+
+  return `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
 export function FormularioSupervision({
   areas,
   rondas,
   bloques,
   areaFijaId,
+  esSupervisor,
   agenteInicialId,
   areaInicialId,
 }: {
@@ -49,6 +94,7 @@ export function FormularioSupervision({
   rondas: Ronda[];
   bloques: Bloque[];
   areaFijaId: number | null;
+  esSupervisor?: boolean;
   agenteInicialId?: number | null;
   areaInicialId?: number | null;
 }) {
@@ -58,18 +104,14 @@ export function FormularioSupervision({
       ? String(areaFijaId)
       : areaInicialId
         ? String(areaInicialId)
-        : areas[0]
-          ? String(areas[0].id)
-          : "",
+        : "",
   );
   const [sectorFiltro, setSectorFiltro] = useState("");
   const [agenteId, setAgenteId] = useState(
     agenteInicialId ? String(agenteInicialId) : "",
   );
-  const [rondaId, setRondaId] = useState(rondas[0] ? String(rondas[0].id) : "");
-  const [fecha, setFecha] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [rondaId, setRondaId] = useState("");
+  const [fecha, setFecha] = useState(hoyEnDdMmAaaa());
   const [familiaNumero, setFamiliaNumero] = useState("");
   const [decisionGestion, setDecisionGestion] =
     useState<DecisionGestion>("NO_REQUIERE");
@@ -94,26 +136,39 @@ export function FormularioSupervision({
 
     const cargar = async () => {
       setError("");
-      const respuesta = await fetch(
-        `/api/v1/catalogo/territorio?areaOperativaId=${areaId}`,
-      );
-      const datos = (await respuesta.json()) as {
-        sectores?: Sector[];
-        agentes?: Agente[];
-        error?: string;
-      };
+      const [respuestaSectores, respuestaAgentes] = await Promise.all([
+        fetch(`/api/v1/sectores/area/${areaId}`),
+        fetch(`/api/v1/agentes/area/${areaId}`),
+      ]);
 
-      if (!respuesta.ok) {
-        setError(datos.error ?? "No se pudo cargar el territorio");
+      const datosSectores = (await respuestaSectores.json()) as
+        | Sector[]
+        | { error?: string; message?: string };
+      const datosAgentes = (await respuestaAgentes.json()) as
+        | Agente[]
+        | { error?: string; message?: string };
+
+      if (!respuestaSectores.ok || !respuestaAgentes.ok) {
+        const fallo = !respuestaSectores.ok ? datosSectores : datosAgentes;
+        setError(
+          extraerMensajeApi(
+            Array.isArray(fallo) ? {} : fallo,
+            "No se pudieron cargar los sectores y agentes del área seleccionada.",
+          ),
+        );
         setSectores([]);
         setAgentes([]);
         return;
       }
 
-      setSectores(datos.sectores ?? []);
-      setAgentes(datos.agentes ?? []);
+      const sectoresCargados = Array.isArray(datosSectores)
+        ? datosSectores
+        : [];
+      const agentesCargados = Array.isArray(datosAgentes) ? datosAgentes : [];
 
-      const agentesCargados = datos.agentes ?? [];
+      setSectores(sectoresCargados);
+      setAgentes(agentesCargados);
+
       const preseleccionado = agentesCargados.find(
         (agente) => agente.id === agenteInicialId,
       );
@@ -156,23 +211,59 @@ export function FormularioSupervision({
   const valores = criterios
     .map((criterio) => puntuaciones[criterio.id])
     .filter((valor): valor is number => valor != null);
+  const valoresParciales = Object.values(puntuaciones);
+  const progreso =
+    criterios.length === 0
+      ? 0
+      : Math.round((valores.length / criterios.length) * 100);
+  const faltan = Math.max(criterios.length - valores.length, 0);
+  const formularioCompleto =
+    criterios.length > 0 && valores.length === criterios.length;
 
   const promedioPreview =
-    valores.length === criterios.length && criterios.length > 0
-      ? calcularPromedio(valores)
-      : null;
+    valoresParciales.length === 0
+      ? null
+      : Number(
+          (
+            valoresParciales.reduce((total, valor) => total + valor, 0) /
+            valoresParciales.length
+          ).toFixed(2),
+        );
 
   async function onSubmit(evento: FormEvent) {
     evento.preventDefault();
     setError("");
 
+    if (!areaId) {
+      setError("Debe seleccionar un área operativa.");
+      return;
+    }
+
     if (!agenteSeleccionado) {
-      setError("Debe seleccionar un agente");
+      setError("Debe seleccionar un agente sanitario.");
+      return;
+    }
+
+    if (agenteSeleccionado.activo === false) {
+      setError(
+        "No se puede crear una supervisión para un agente inactivo.",
+      );
+      return;
+    }
+
+    if (!rondaId) {
+      setError("Debe seleccionar una ronda.");
+      return;
+    }
+
+    const fechaIso = isoDesdeDdMmAaaa(fecha);
+    if (!fechaIso) {
+      setError("La fecha debe tener el formato dd/mm/aaaa.");
       return;
     }
 
     if (valores.length !== criterios.length) {
-      setError("Debe puntuar todos los criterios (1 a 5)");
+      setError("Debe puntuar todos los criterios de evaluación.");
       return;
     }
 
@@ -184,15 +275,15 @@ export function FormularioSupervision({
       body: JSON.stringify({
         agenteSanitarioId: agenteSeleccionado.id,
         areaOperativaId: Number(areaId),
-        sectorId: agenteSeleccionado.sectorId,
+        sectorId: agenteSeleccionado.sectorId ?? undefined,
         rondaId: Number(rondaId),
-        fecha,
-        familiaNumero: familiaNumero ? Number(familiaNumero) : null,
+        fecha: new Date(`${fechaIso}T12:00:00`).toISOString(),
+        familiaNumero: familiaNumero ? Number(familiaNumero) : undefined,
         decisionGestion,
-        fortalezas,
-        oportunidadesMejora,
-        situacionesCriticas,
-        recomendaciones,
+        fortalezas: fortalezas || undefined,
+        oportunidadesMejora: oportunidadesMejora || undefined,
+        situacionesCriticas: situacionesCriticas || undefined,
+        recomendaciones: recomendaciones || undefined,
         evaluaciones: criterios.map((criterio) => ({
           criterioId: criterio.id,
           puntuacion: puntuaciones[criterio.id],
@@ -200,15 +291,21 @@ export function FormularioSupervision({
       }),
     });
 
-    const datos = (await respuesta.json()) as { id?: number; error?: string };
+    const datos = (await respuesta.json()) as {
+      id?: number;
+      error?: string;
+      message?: string | string[];
+    };
 
     if (!respuesta.ok) {
-      setError(datos.error ?? "No se pudo guardar la supervisión");
+      setError(
+        extraerMensajeApi(datos, "No se pudo guardar la supervisión."),
+      );
       setGuardando(false);
       return;
     }
 
-    router.push(`/supervisiones/${datos.id}`);
+    router.push("/supervisiones");
     router.refresh();
   }
 
@@ -220,15 +317,61 @@ export function FormularioSupervision({
         </div>
       )}
 
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-slate-800">Progreso de evaluación</p>
+            <p className="mt-1 text-slate-500">
+              {valores.length} de {criterios.length} criterios puntuados
+            </p>
+          </div>
+          <span
+            className={`text-sm font-bold ${
+              formularioCompleto ? "text-emerald-600" : "text-blue-600"
+            }`}
+          >
+            {progreso}%
+          </span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full ${
+              formularioCompleto ? "bg-emerald-500" : "bg-blue-500"
+            }`}
+            style={{ width: `${progreso}%` }}
+          />
+        </div>
+      </div>
+
       <section className="grid gap-4 sm:grid-cols-2">
+        <p className="sm:col-span-2 text-sm font-medium text-slate-900">
+          Identificación
+        </p>
+        <p className="-mt-2 sm:col-span-2 text-xs text-slate-500">
+          Seleccione el territorio y los datos correspondientes al agente
+          sanitario.
+        </p>
+        {esSupervisor ? (
+          <label className="text-sm">
+            Área operativa
+            <input
+              readOnly
+              className="mt-1 w-full rounded-lg border bg-slate-50 px-3 py-2 text-slate-700"
+              value={
+                areas.find((area) => area.id === areaFijaId)?.nombre ??
+                "Sin área asignada"
+              }
+            />
+          </label>
+        ) : (
         <label className="text-sm">
           Área operativa
           <select
             className="mt-1 w-full rounded-lg border px-3 py-2"
             value={areaId}
-            disabled={areaFijaId != null}
             onChange={(e) => setAreaId(e.target.value)}
           >
+            <option value="">Seleccione un área</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.nombre}
@@ -236,9 +379,10 @@ export function FormularioSupervision({
             ))}
           </select>
         </label>
+        )}
 
         <label className="text-sm">
-          Sector (filtro)
+          Sector
           <select
             className="mt-1 w-full rounded-lg border px-3 py-2"
             value={sectorFiltro}
@@ -247,25 +391,47 @@ export function FormularioSupervision({
               setAgenteId("");
             }}
           >
-            <option value="">Todos</option>
-            <option value="SIN_SECTOR">Sin sector asignado</option>
+            <option value="">
+              Todos los sectores
+            </option>
+            <option value="SIN_SECTOR">
+              Sin sector asignado
+            </option>
             {sectores.map((sector) => (
               <option key={sector.id} value={sector.id}>
-                {sector.numero} {sector.nombre ?? ""}
+                {sector.nombre?.trim() || "Sin nombre"}
               </option>
             ))}
           </select>
         </label>
 
         <label className="text-sm">
-          Agente
+          Agente sanitario
           <select
             required
             className="mt-1 w-full rounded-lg border px-3 py-2"
             value={agenteId}
-            onChange={(e) => setAgenteId(e.target.value)}
+            onChange={(e) => {
+              const valor = e.target.value;
+              setAgenteId(valor);
+              const agente = agentes.find((item) => item.id === Number(valor));
+              if (!agente) {
+                return;
+              }
+              setSectorFiltro(
+                agente.sectorId == null
+                  ? "SIN_SECTOR"
+                  : String(agente.sectorId),
+              );
+            }}
           >
-            <option value="">Seleccionar</option>
+            <option value="">
+              {!areaId
+                ? "Seleccione primero un área"
+                : agentesFiltrados.length === 0
+                  ? "No hay agentes asignados"
+                  : "Seleccione un agente"}
+            </option>
             {agentesFiltrados.map((agente) => (
               <option key={agente.id} value={agente.id}>
                 {agente.apellido}, {agente.nombre}
@@ -282,6 +448,7 @@ export function FormularioSupervision({
             value={rondaId}
             onChange={(e) => setRondaId(e.target.value)}
           >
+            <option value="">Seleccione una ronda</option>
             {rondas.map((ronda) => (
               <option key={ronda.id} value={ronda.id}>
                 {ronda.nombre}
@@ -293,11 +460,14 @@ export function FormularioSupervision({
         <label className="text-sm">
           Fecha
           <input
-            type="date"
+            type="text"
+            inputMode="numeric"
             required
+            placeholder="dd/mm/aaaa"
+            maxLength={10}
             className="mt-1 w-full rounded-lg border px-3 py-2"
             value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
+            onChange={(e) => setFecha(enmascararFecha(e.target.value))}
           />
         </label>
 
@@ -314,16 +484,52 @@ export function FormularioSupervision({
       </section>
 
       {agenteSeleccionado && (
-        <p className="text-sm text-slate-500">
-          Sector del agente:{" "}
-          {agenteSeleccionado.sectorId
-            ? sectores.find((s) => s.id === agenteSeleccionado.sectorId)
-                ?.nombre ?? agenteSeleccionado.sectorId
-            : "Sin sector asignado"}
-        </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+          <p className="font-medium text-slate-900">Agente seleccionado</p>
+          <p className="mt-1 text-slate-700">
+            {agenteSeleccionado.apellido}, {agenteSeleccionado.nombre}
+          </p>
+          <p className="mt-2 text-slate-500">
+            Documento: {agenteSeleccionado.documento ?? "Sin información"}
+          </p>
+          <p className="text-slate-500">
+            Cobertura: {agenteSeleccionado.cobertura ?? "Sin información"}
+          </p>
+          <p className="text-slate-500">
+            Sector:{" "}
+            {agenteSeleccionado.sectorId
+              ? sectores.find((s) => s.id === agenteSeleccionado.sectorId)
+                  ?.nombre ?? `Sector ${agenteSeleccionado.sectorId}`
+              : "Sin sector asignado"}
+          </p>
+        </div>
       )}
 
-      {bloques.map((bloque) => (
+      <p className="text-sm font-medium text-slate-900">Evaluación</p>
+      <p className="text-xs text-slate-500">
+        Puntúe cada criterio utilizando la escala del 1 al 5.
+      </p>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Escala de puntuación
+        </p>
+        <div className="grid gap-2 sm:grid-cols-5">
+          {escalaPuntuacion.map((item) => (
+            <div key={item.valor} className="text-sm">
+              <p className="font-semibold text-slate-800">{item.valor}</p>
+              <p className="text-xs text-slate-500">{item.texto}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {bloques.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center text-sm text-slate-500">
+          No hay bloques de evaluación activos.
+        </div>
+      ) : (
+      bloques.map((bloque) => (
         <section
           key={bloque.id}
           className="rounded-xl border border-slate-200 bg-white p-4"
@@ -336,6 +542,11 @@ export function FormularioSupervision({
             {bloque.criterios.map((criterio) => (
               <div key={criterio.id}>
                 <p className="text-sm text-slate-800">{criterio.nombre}</p>
+                {criterio.descripcion && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    {criterio.descripcion}
+                  </p>
+                )}
                 <div className="mt-2 flex gap-2">
                   {[1, 2, 3, 4, 5].map((valor) => (
                     <button
@@ -361,17 +572,78 @@ export function FormularioSupervision({
             ))}
           </div>
         </section>
-      ))}
-
-      {promedioPreview != null && (
-        <p className="text-sm text-slate-700">
-          Promedio: {promedioPreview.toFixed(2)} ·{" "}
-          {etiquetasClasificacion[calcularClasificacion(promedioPreview)]}
-        </p>
+      ))
       )}
 
+      <p className="text-sm font-medium text-slate-900">
+        Observaciones del supervisor
+      </p>
+      <p className="text-xs text-slate-500">
+        Registre los aspectos relevantes identificados durante la supervisión.
+      </p>
+
       <label className="block text-sm">
-        Decisión de gestión
+        Fortalezas observadas
+        <p className="text-xs font-normal text-slate-500">
+          Aspectos positivos identificados durante la supervisión.
+        </p>
+        <textarea
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          rows={3}
+          placeholder="Describa las fortalezas observadas..."
+          value={fortalezas}
+          onChange={(e) => setFortalezas(e.target.value)}
+        />
+      </label>
+      <label className="block text-sm">
+        Oportunidades de mejora
+        <p className="text-xs font-normal text-slate-500">
+          Aspectos que pueden fortalecerse o corregirse.
+        </p>
+        <textarea
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          rows={3}
+          placeholder="Describa las oportunidades de mejora..."
+          value={oportunidadesMejora}
+          onChange={(e) => setOportunidadesMejora(e.target.value)}
+        />
+      </label>
+      <label className="block text-sm">
+        Situaciones críticas detectadas
+        <p className="text-xs font-normal text-slate-500">
+          Registre situaciones que requieran especial atención.
+        </p>
+        <textarea
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          rows={3}
+          placeholder="Describa las situaciones críticas..."
+          value={situacionesCriticas}
+          onChange={(e) => setSituacionesCriticas(e.target.value)}
+        />
+      </label>
+      <label className="block text-sm">
+        Recomendaciones
+        <p className="text-xs font-normal text-slate-500">
+          Acciones sugeridas a partir de la supervisión.
+        </p>
+        <textarea
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          rows={3}
+          placeholder="Ingrese las recomendaciones..."
+          value={recomendaciones}
+          onChange={(e) => setRecomendaciones(e.target.value)}
+        />
+      </label>
+
+      <p className="text-sm font-medium text-slate-900">Decisión de gestión</p>
+      <p className="text-xs text-slate-500">
+        Seleccione la acción que corresponde según los resultados y
+        observaciones.
+      </p>
+      <p className="text-sm font-semibold text-slate-700">
+        ¿Requiere intervención?
+      </p>
+      <label className="block text-sm">
         <select
           className="mt-1 w-full max-w-md rounded-lg border px-3 py-2"
           value={decisionGestion}
@@ -385,52 +657,84 @@ export function FormularioSupervision({
             </option>
           ))}
         </select>
+        <span className="mt-1 block text-xs text-slate-500">
+          {ayudasGestion[decisionGestion]}
+        </span>
       </label>
 
-      <label className="block text-sm">
-        Fortalezas
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2"
-          rows={3}
-          value={fortalezas}
-          onChange={(e) => setFortalezas(e.target.value)}
-        />
-      </label>
-      <label className="block text-sm">
-        Oportunidades de mejora
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2"
-          rows={3}
-          value={oportunidadesMejora}
-          onChange={(e) => setOportunidadesMejora(e.target.value)}
-        />
-      </label>
-      <label className="block text-sm">
-        Situaciones críticas
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2"
-          rows={3}
-          value={situacionesCriticas}
-          onChange={(e) => setSituacionesCriticas(e.target.value)}
-        />
-      </label>
-      <label className="block text-sm">
-        Recomendaciones
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2"
-          rows={3}
-          value={recomendaciones}
-          onChange={(e) => setRecomendaciones(e.target.value)}
-        />
-      </label>
+      <p className="text-sm font-medium text-slate-900">Resultado general</p>
+      <p className="text-xs text-slate-500">
+        El resultado se calcula automáticamente a partir de las puntuaciones
+        registradas.
+      </p>
+      {promedioPreview == null ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-center">
+          <p className="font-semibold text-slate-700">Evaluación pendiente</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Puntúe los criterios para comenzar a calcular el resultado.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Promedio actual
+            </p>
+            <p className="mt-2 text-4xl font-bold text-slate-900">
+              {promedioPreview.toFixed(2)}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">sobre 5.00</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Clasificación
+            </p>
+            <p className="mt-3 font-semibold text-slate-800">
+              {
+                etiquetasClasificacion[
+                  calcularClasificacion(promedioPreview)
+                ]
+              }
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Escala de clasificación
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <p>Crítico · 1.0 – 2.5</p>
+              <p>Regular · 2.6 – 3.5</p>
+              <p>Bueno · 3.6 – 4.5</p>
+              <p>Excelente · 4.6 – 5.0</p>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <button
-        type="submit"
-        disabled={guardando || rondas.length === 0 || criterios.length === 0}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-60"
-      >
-        {guardando ? "Guardando..." : "Registrar supervisión"}
-      </button>
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-center text-xs text-slate-500 sm:text-left">
+          {!formularioCompleto
+            ? `Faltan ${faltan} criterio${faltan === 1 ? "" : "s"} por puntuar.`
+            : "Todos los criterios fueron puntuados."}
+        </p>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => router.push("/supervisiones")}
+            disabled={guardando}
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={guardando || !formularioCompleto}
+            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {guardando ? "Guardando..." : "Guardar supervisión"}
+          </button>
+        </div>
+      </div>
     </form>
   );
 }

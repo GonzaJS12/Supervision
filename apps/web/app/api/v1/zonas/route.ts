@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
+import { jsonError } from "@/lib/errores";
 import { listarZonasActivas } from "@/lib/server/catalogo";
 
 export async function GET() {
@@ -8,5 +9,9 @@ export async function GET() {
     return sesion;
   }
 
-  return NextResponse.json(await listarZonasActivas());
+  try {
+    return NextResponse.json(await listarZonasActivas());
+  } catch (error) {
+    return jsonError(error);
+  }
 }

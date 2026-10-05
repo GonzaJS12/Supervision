@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError, jsonValidacion, jsonSiHayExtras, enteroDesdeDto } from "@/lib/errores";
 import { cambiarAreaOperativa } from "@/lib/server/usuarios";
 
 export async function PATCH(
@@ -13,23 +13,36 @@ export async function PATCH(
   }
 
   const { id } = await context.params;
-  const cuerpo = (await request.json()) as { areaOperativaId?: number };
+  let cuerpo: { areaOperativaId?: number };
 
-  if (!cuerpo.areaOperativaId) {
-    return NextResponse.json(
-      { error: "Debe indicar un área operativa" },
-      { status: 400 },
-    );
+  try {
+    cuerpo = (await request.json()) as { areaOperativaId?: number };
+  } catch {
+    return jsonValidacion("areaOperativaId must be an integer number");
+  }
+
+  const extras = jsonSiHayExtras(cuerpo, ["areaOperativaId"]);
+  if (extras) {
+    return extras;
+  }
+
+  const areaOperativaId = Number(enteroDesdeDto(cuerpo.areaOperativaId));
+
+  if (!Number.isInteger(areaOperativaId)) {
+    return jsonValidacion("areaOperativaId must be an integer number");
+  }
+
+  if (areaOperativaId < 1) {
+    return jsonValidacion("areaOperativaId must not be less than 1");
   }
 
   try {
     const usuario = await cambiarAreaOperativa(
-      Number(id),
-      Number(cuerpo.areaOperativaId),
+      parseIdParam(id),
+      areaOperativaId,
     );
     return NextResponse.json(usuario);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

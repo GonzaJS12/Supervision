@@ -55,4 +55,15 @@ CREATE TABLE IF NOT EXISTS pendientes (
   remote_id INTEGER,
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS supervisiones_remotas (
+  id INTEGER PRIMARY KEY NOT NULL,
+  fecha TEXT NOT NULL,
+  promedio REAL,
+  clasificacion TEXT,
+  decision_gestion TEXT,
+  agente_id INTEGER,
+  agente_nombre TEXT,
+  agente_apellido TEXT
+);
 `;

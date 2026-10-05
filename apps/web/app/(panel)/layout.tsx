@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerSesion } from "@/lib/sesion";
-import { CerrarSesionBoton } from "./cerrar-sesion";
+import { NavegacionPanel } from "./navegacion";
 
 export default async function PanelLayout({
   children,
@@ -16,41 +15,18 @@ export default async function PanelLayout({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">
-              Supervisión APS
-            </p>
-            <p className="text-xs text-slate-500">
-              {sesion.nombre} {sesion.apellido} · {sesion.rol}
-            </p>
-          </div>
-          <nav className="flex items-center gap-4 text-sm">
-            <Link className="text-slate-600 hover:text-slate-900" href="/dashboard">
-              Inicio
-            </Link>
-            <Link className="text-slate-600 hover:text-slate-900" href="/agentes">
-              Agentes
-            </Link>
-            <Link className="text-slate-600 hover:text-slate-900" href="/supervisiones">
-              Supervisiones
-            </Link>
-            {sesion.rol === "ADMIN" && (
-              <>
-                <Link className="text-slate-600 hover:text-slate-900" href="/admin/usuarios">
-                  Usuarios
-                </Link>
-                <Link className="text-slate-600 hover:text-slate-900" href="/admin/bloques">
-                  Evaluación
-                </Link>
-              </>
-            )}
-            <CerrarSesionBoton />
-          </nav>
-        </div>
-      </header>
-      {children}
+      <NavegacionPanel
+        sesion={{
+          nombre: sesion.nombre,
+          apellido: sesion.apellido,
+          rol: sesion.rol,
+          areaOperativaNombre: sesion.areaOperativaNombre ?? null,
+        }}
+      >
+        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+        </main>
+      </NavegacionPanel>
     </div>
   );
 }

@@ -14,3 +14,5 @@ export function POST() {
 
   return respuesta;
 }
+
+export const GET = POST;

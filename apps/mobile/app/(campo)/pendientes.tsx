@@ -5,6 +5,8 @@ import {
   listarPendientes,
   pushSupervisionesPendientes,
 } from "../../src/sync/push";
+import { formatearFecha } from "../../src/fechas";
+import { etiquetaEstadoPendiente } from "../../src/etiquetas";
 
 export default function PendientesScreen() {
   const [items, setItems] = useState<
@@ -30,7 +32,7 @@ export default function PendientesScreen() {
       await recargar();
     } catch (error) {
       setMensaje(
-        error instanceof Error ? error.message : "No se pudo enviar",
+        error instanceof Error ? error.message : "No se pudo enviar.",
       );
     }
   }
@@ -56,6 +58,11 @@ export default function PendientesScreen() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.localId}
+        ListEmptyComponent={
+          <Text style={{ paddingHorizontal: 16, color: "#64748b" }}>
+            No hay supervisiones pendientes de envío.
+          </Text>
+        }
         renderItem={({ item }) => (
           <View
             style={{
@@ -64,8 +71,12 @@ export default function PendientesScreen() {
               borderColor: "#e2e8f0",
             }}
           >
-            <Text style={{ fontWeight: "600" }}>{item.estado}</Text>
-            <Text>{item.payload.fecha}</Text>
+            <Text style={{ fontWeight: "600" }}>
+              {etiquetaEstadoPendiente(item.estado)}
+            </Text>
+            <Text>
+              {item.nombreAgente} · {formatearFecha(item.payload.fecha)}
+            </Text>
             {item.error ? (
               <Text style={{ color: "#b91c1c" }}>{item.error}</Text>
             ) : null}

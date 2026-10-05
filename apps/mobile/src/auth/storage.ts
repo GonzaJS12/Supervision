@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import type { UsuarioSesion } from "@supervision/api-client";
+import { repararTexto } from "@supervision/domain";
 
 const TOKEN = "supervision_token";
 const USUARIO = "supervision_usuario";
@@ -22,7 +23,12 @@ export async function leerUsuario(): Promise<UsuarioSesion | null> {
     return null;
   }
 
-  return JSON.parse(raw) as UsuarioSesion;
+  const usuario = JSON.parse(raw) as UsuarioSesion;
+  return {
+    ...usuario,
+    nombre: repararTexto(usuario.nombre) ?? usuario.nombre,
+    apellido: repararTexto(usuario.apellido) ?? usuario.apellido,
+  };
 }
 
 export async function borrarSesion() {

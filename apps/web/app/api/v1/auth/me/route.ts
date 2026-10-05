@@ -1,15 +1,48 @@
 import { NextResponse } from "next/server";
-import { obtenerSesion } from "@/lib/sesion";
+import { prisma } from "@supervision/database";
+import { resolverAuth } from "@/lib/sesion";
+import { ErrorNegocio, jsonError } from "@/lib/errores";
 
 export async function GET() {
-  const sesion = await obtenerSesion();
+  const auth = await resolverAuth();
 
-  if (!sesion) {
-    return NextResponse.json(
-      { error: "No autenticado" },
-      { status: 401 },
-    );
+  if ("error" in auth) {
+    return jsonError(new ErrorNegocio(auth.error, auth.status));
   }
 
-  return NextResponse.json({ usuario: sesion });
+  const sesion = auth.sesion;
+
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: sesion.id },
+      select: {
+        id: true,
+        nombre: true,
+        apellido: true,
+        email: true,
+        rol: true,
+        activo: true,
+        areaOperativaId: true,
+        areaOperativa: {
+          select: {
+            id: true,
+            externalAreaId: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    if (!usuario) {
+      return jsonError(new ErrorNegocio("Usuario no encontrado", 401));
+    }
+
+    if (!usuario.activo) {
+      return jsonError(new ErrorNegocio("Usuario inactivo", 401));
+    }
+
+    return NextResponse.json(usuario);
+  } catch (error) {
+    return jsonError(error);
+  }
 }

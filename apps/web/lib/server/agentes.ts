@@ -2,18 +2,24 @@ import { prisma } from "@supervision/database";
 import { LIMITE_POR_PAGINA } from "@supervision/domain";
 import type { SesionUsuario } from "@/lib/auth";
 import { ErrorNegocio } from "@/lib/errores";
-import { areaDelSupervisor } from "@/lib/server/catalogo";
+import { areaDelSupervisor, asegurarAreaPermitida } from "@/lib/server/catalogo";
 
 export async function listarAgentes(params: {
   sesion: SesionUsuario;
   page?: number;
+  limit?: number;
   nombre?: string;
   areaOperativaId?: number;
   sectorId?: number;
 }) {
+  const paginaRaw = params.page ?? 1;
   const pagina =
-    params.page && params.page > 0 ? params.page : 1;
-  const limite = LIMITE_POR_PAGINA;
+    Number.isInteger(paginaRaw) && paginaRaw > 0 ? paginaRaw : 1;
+  const limiteRaw = params.limit ?? LIMITE_POR_PAGINA;
+  const limite =
+    Number.isInteger(limiteRaw) && limiteRaw > 0
+      ? Math.min(limiteRaw, LIMITE_POR_PAGINA)
+      : LIMITE_POR_PAGINA;
 
   const where: {
     OR?: Array<{
@@ -39,18 +45,35 @@ export async function listarAgentes(params: {
       select: { activo: true, areaOperativaId: true, rol: true },
     });
 
-    if (!usuario?.activo || usuario.areaOperativaId == null) {
-      throw new Error(
-        "El supervisor no está habilitado o no tiene área asignada",
+    if (!usuario || !usuario.activo) {
+      throw new ErrorNegocio("El usuario no está habilitado", 403);
+    }
+
+    if (usuario.rol !== "SUPERVISOR") {
+      throw new ErrorNegocio("El usuario no es supervisor", 403);
+    }
+
+    if (usuario.areaOperativaId == null) {
+      throw new ErrorNegocio(
+        "El supervisor no tiene un área operativa asignada",
+        403,
       );
     }
 
     where.areaOperativaId = usuario.areaOperativaId;
-  } else if (params.areaOperativaId && params.areaOperativaId > 0) {
+  } else if (
+    params.areaOperativaId !== undefined &&
+    Number.isInteger(params.areaOperativaId) &&
+    params.areaOperativaId > 0
+  ) {
     where.areaOperativaId = params.areaOperativaId;
   }
 
-  if (params.sectorId && params.sectorId > 0) {
+  if (
+    params.sectorId !== undefined &&
+    Number.isInteger(params.sectorId) &&
+    params.sectorId > 0
+  ) {
     where.sectorId = params.sectorId;
   }
 
@@ -62,10 +85,19 @@ export async function listarAgentes(params: {
       take: limite,
       include: {
         areaOperativa: {
-          select: { id: true, nombre: true },
+          select: {
+            id: true,
+            externalAreaId: true,
+            nombre: true,
+          },
         },
         sector: {
-          select: { id: true, numero: true, nombre: true },
+          select: {
+            id: true,
+            externalSectorId: true,
+            numero: true,
+            nombre: true,
+          },
         },
       },
       orderBy: [
@@ -95,10 +127,19 @@ export async function buscarAgente(
     where: { id },
     include: {
       areaOperativa: {
-        select: { id: true, nombre: true },
+        select: {
+          id: true,
+          externalAreaId: true,
+          nombre: true,
+        },
       },
       sector: {
-        select: { id: true, numero: true, nombre: true },
+        select: {
+          id: true,
+          externalSectorId: true,
+          numero: true,
+          nombre: true,
+        },
       },
     },
   });
@@ -137,5 +178,38 @@ export async function listarSectoresParaFiltro(
     where: { areaOperativaId: areaId, activo: true },
     select: { id: true, numero: true, nombre: true },
     orderBy: { numero: "asc" },
+  });
+}
+
+export async function listarAgentesPorArea(
+  sesion: SesionUsuario,
+  areaOperativaId: number,
+) {
+  await asegurarAreaPermitida(sesion, areaOperativaId, "agentes");
+
+  const area = await prisma.areaOperativa.findUnique({
+    where: { id: areaOperativaId },
+  });
+
+  if (!area?.activo) {
+    throw new ErrorNegocio(
+      "El área operativa no existe o está inactiva",
+      404,
+    );
+  }
+
+  return prisma.agenteSanitario.findMany({
+    where: { areaOperativaId, activo: true },
+    include: {
+      sector: {
+        select: {
+          id: true,
+          externalSectorId: true,
+          numero: true,
+          nombre: true,
+        },
+      },
+    },
+    orderBy: [{ apellido: "asc" }, { nombre: "asc" }],
   });
 }

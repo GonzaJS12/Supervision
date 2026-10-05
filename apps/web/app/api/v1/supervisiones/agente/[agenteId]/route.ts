@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError } from "@/lib/errores";
 import { listarSupervisionesPorAgente } from "@/lib/server/supervisiones";
 
 export async function GET(
@@ -17,11 +17,10 @@ export async function GET(
   try {
     const data = await listarSupervisionesPorAgente(
       sesion,
-      Number(agenteId),
+      parseIdParam(agenteId),
     );
     return NextResponse.json(data);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
-import { respuestaError } from "@/lib/errores";
+import { parseIdParam, jsonError } from "@/lib/errores";
 import { buscarAgente } from "@/lib/server/agentes";
 
 export async function GET(
@@ -15,10 +15,9 @@ export async function GET(
   const { id } = await context.params;
 
   try {
-    const agente = await buscarAgente(sesion, Number(id));
+    const agente = await buscarAgente(sesion, parseIdParam(id));
     return NextResponse.json(agente);
   } catch (error) {
-    const { status, error: mensaje } = respuestaError(error);
-    return NextResponse.json({ error: mensaje }, { status });
+    return jsonError(error);
   }
 }

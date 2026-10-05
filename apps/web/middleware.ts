@@ -1,24 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { COOKIE_SESION, leerSesion } from "@/lib/auth";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
-};
+import { aplicarCors, respuestaCors } from "@/lib/cors";
 
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/api/")) {
     if (request.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: cors });
+      return respuestaCors(request);
     }
 
-    const respuesta = NextResponse.next();
-    Object.entries(cors).forEach(([clave, valor]) => {
-      respuesta.headers.set(clave, valor);
-    });
-    return respuesta;
+    return aplicarCors(request, NextResponse.next());
   }
 
   const token = request.cookies.get(COOKIE_SESION)?.value;

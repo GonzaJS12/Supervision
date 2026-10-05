@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { etiquetasClasificacion, etiquetasGestion, formatearFecha } from "@/lib/etiquetas";
+import { extraerMensajeApi } from "@/lib/mensaje-api";
+import { etiquetasClasificacion, etiquetasGestion, formatearFecha, formatearFechaHora } from "@/lib/etiquetas";
 
 type SupervisionExport = {
   fecha: string;
@@ -22,9 +23,19 @@ type SupervisionExport = {
 export function BotonExportarPdf({
   titulo,
   supervisor,
+  nombreArchivo,
+  etiqueta = "Exportar PDF",
+  etiquetaCargando = "Generando PDF...",
+  vacio = "No hay supervisiones para exportar.",
+  deshabilitado = false,
 }: {
   titulo: string;
   supervisor?: string;
+  nombreArchivo: string;
+  etiqueta?: string;
+  etiquetaCargando?: string;
+  vacio?: string;
+  deshabilitado?: boolean;
 }) {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -36,20 +47,21 @@ export function BotonExportarPdf({
     const respuesta = await fetch("/api/v1/supervisiones/exportacion");
     const data = (await respuesta.json()) as
       | SupervisionExport[]
-      | { error?: string };
+      | { error?: string; message?: string };
 
     if (!respuesta.ok || !Array.isArray(data)) {
       setError(
-        !Array.isArray(data) && data.error
-          ? data.error
-          : "No se pudo exportar",
+        extraerMensajeApi(
+          data as { error?: string; message?: string | string[] },
+          "No se pudo generar el PDF de supervisiones.",
+        ),
       );
       setCargando(false);
       return;
     }
 
     if (data.length === 0) {
-      setError("No hay supervisiones para exportar.");
+      setError(vacio);
       setCargando(false);
       return;
     }
@@ -62,20 +74,20 @@ export function BotonExportarPdf({
       format: "a4",
     });
 
-    documento.setFontSize(16);
+    documento.setFontSize(18);
     documento.text("Sistema de Supervisión de Agentes Sanitarios", 14, 16);
-    documento.setFontSize(12);
-    documento.text(titulo, 14, 24);
+    documento.setFontSize(13);
+    documento.text(titulo, 14, 25);
     documento.setFontSize(9);
 
-    let y = 30;
+    let y = 32;
     if (supervisor) {
       documento.text(`Supervisor: ${supervisor}`, 14, y);
       y += 5;
     }
 
     documento.text(
-      `Fecha de generación: ${new Date().toLocaleString("es-AR")}`,
+      `Fecha de generación: ${formatearFechaHora(new Date())}`,
       14,
       y,
     );
@@ -83,7 +95,7 @@ export function BotonExportarPdf({
     documento.text(`Total de supervisiones: ${data.length}`, 14, y);
 
     autoTable(documento, {
-      startY: y + 6,
+      startY: y + 7,
       head: [
         [
           "Fecha",
@@ -107,17 +119,35 @@ export function BotonExportarPdf({
         item.sector
           ? item.sector.nombre ?? `Sector ${item.sector.numero ?? ""}`
           : "Sin sector asignado",
-        `${item.supervisor.apellido}, ${item.supervisor.nombre}`,
-        item.promedio == null ? "-" : item.promedio.toFixed(2),
+        `${item.supervisor.nombre} ${item.supervisor.apellido}`,
+        item.promedio !== null && item.promedio !== undefined
+          ? Number(item.promedio).toFixed(2)
+          : "-",
         item.clasificacion
           ? etiquetasClasificacion[item.clasificacion]
           : "-",
         etiquetasGestion[item.decisionGestion],
       ]),
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7, cellPadding: 2, valign: "middle" },
+      headStyles: { fontStyle: "bold" },
+      margin: { left: 10, right: 10 },
+      didDrawPage: (hook) => {
+        const numeroPagina = documento.getNumberOfPages();
+        documento.setFontSize(8);
+        documento.text(
+          `Página ${numeroPagina}`,
+          documento.internal.pageSize.getWidth() - 25,
+          documento.internal.pageSize.getHeight() - 7,
+        );
+        if (hook.pageNumber > 1) {
+          documento.setFontSize(9);
+          documento.text(titulo, 14, 10);
+        }
+      },
     });
 
-    documento.save("supervisiones.pdf");
+    const fechaArchivo = new Date().toISOString().slice(0, 10);
+    documento.save(`${nombreArchivo}-${fechaArchivo}.pdf`);
     setCargando(false);
   }
 
@@ -126,10 +156,10 @@ export function BotonExportarPdf({
       <button
         type="button"
         onClick={() => void exportar()}
-        disabled={cargando}
+        disabled={cargando || deshabilitado}
         className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
       >
-        {cargando ? "Exportando..." : "Exportar PDF"}
+        {cargando ? etiquetaCargando : etiqueta}
       </button>
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
     </div>

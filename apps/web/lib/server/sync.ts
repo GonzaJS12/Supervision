@@ -6,6 +6,7 @@ import {
 } from "@/lib/server/catalogo";
 import {
   crearSupervision,
+  listarSupervisiones,
   type DatosCrearSupervision,
 } from "@/lib/server/supervisiones";
 
@@ -18,15 +19,11 @@ export async function obtenerPaqueteSync(sesion: SesionUsuario) {
   }
 
   const catalogo = await obtenerCatalogoFormulario(sesion);
-
-  if (catalogo.areaFijaId == null) {
-    throw new ErrorNegocio(
-      "El supervisor no tiene un área operativa asignada",
-      403,
-    );
-  }
-
-  const territorio = await obtenerTerritorio(sesion, catalogo.areaFijaId);
+  const territorio =
+    catalogo.areaFijaId == null
+      ? { sectores: [], agentes: [] }
+      : await obtenerTerritorio(sesion, catalogo.areaFijaId);
+  const historial = await listarSupervisiones(sesion, { page: 1 });
 
   return {
     usuario: {
@@ -42,6 +39,18 @@ export async function obtenerPaqueteSync(sesion: SesionUsuario) {
     bloques: catalogo.bloques,
     sectores: territorio.sectores,
     agentes: territorio.agentes,
+    supervisiones: historial.data.map((item) => ({
+      id: item.id,
+      fecha: item.fecha,
+      promedio: item.promedio,
+      clasificacion: item.clasificacion,
+      decisionGestion: item.decisionGestion,
+      agenteSanitario: {
+        id: item.agenteSanitario.id,
+        nombre: item.agenteSanitario.nombre,
+        apellido: item.agenteSanitario.apellido,
+      },
+    })),
     pulledAt: new Date().toISOString(),
   };
 }

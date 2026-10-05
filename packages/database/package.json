@@ -14,10 +14,12 @@
     "migrate:deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "import:territorial": "tsx prisma/importar-datos-territoriales.ts",
+    "reparar:texto": "tsx prisma/reparar-mojibake.ts",
     "studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@supervision/domain": "*",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.6.1"
   },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requerirSesion } from "@/lib/requerir";
+import { parseIdParam, jsonError } from "@/lib/errores";
 import { listarCriteriosPorBloque } from "@/lib/server/evaluacion";
 
 export async function GET(
@@ -12,6 +13,13 @@ export async function GET(
   }
 
   const { bloqueId } = await context.params;
-  const criterios = await listarCriteriosPorBloque(Number(bloqueId));
-  return NextResponse.json(criterios);
+
+  try {
+    const criterios = await listarCriteriosPorBloque(
+      parseIdParam(bloqueId),
+    );
+    return NextResponse.json(criterios);
+  } catch (error) {
+    return jsonError(error);
+  }
 }

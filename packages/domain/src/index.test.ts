@@ -4,6 +4,7 @@ import {
   calcularClasificacion,
   calcularPromedio,
   hayCriteriosDuplicados,
+  repararTexto,
 } from "./index.ts";
 
 test("promedio: mismos pesos y dos decimales", () => {
@@ -29,4 +30,11 @@ test("clasificación por umbrales", () => {
 test("criterios duplicados", () => {
   assert.equal(hayCriteriosDuplicados([1, 2, 3]), false);
   assert.equal(hayCriteriosDuplicados([1, 2, 1]), true);
+});
+
+test("repara nombres latin1/utf-8 (Acuña)", () => {
+  assert.equal(repararTexto("AcuÃ±a"), "Acuña");
+  assert.equal(repararTexto("MarÃ­a"), "María");
+  assert.equal(repararTexto("Acuña"), "Acuña");
+  assert.equal(repararTexto(null), null);
 });

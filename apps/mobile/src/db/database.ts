@@ -19,5 +19,18 @@ export async function obtenerDb() {
      */
   }
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS supervisiones_remotas (
+      id INTEGER PRIMARY KEY NOT NULL,
+      fecha TEXT NOT NULL,
+      promedio REAL,
+      clasificacion TEXT,
+      decision_gestion TEXT,
+      agente_id INTEGER,
+      agente_nombre TEXT,
+      agente_apellido TEXT
+    );
+  `);
+
   return db;
 }
