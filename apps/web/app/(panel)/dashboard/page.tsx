@@ -125,10 +125,10 @@ export default async function DashboardPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             {(
               [
-                ["CRITICO", "1.0 – 2.5", "border-red-200 bg-red-500"],
-                ["REGULAR", "2.6 – 3.5", "border-amber-200 bg-amber-500"],
-                ["BUENO", "3.6 – 4.5", "border-blue-200 bg-blue-500"],
-                ["EXCELENTE", "4.6 – 5.0", "border-emerald-200 bg-emerald-500"],
+                ["CRITICO", "1.0 – 2.5", "border-red-200 bg-red-50"],
+                ["REGULAR", "2.6 – 3.5", "border-amber-200 bg-amber-50"],
+                ["BUENO", "3.6 – 4.5", "border-blue-200 bg-blue-50"],
+                ["EXCELENTE", "4.6 – 5.0", "border-emerald-200 bg-emerald-50"],
               ] as Array<[Clasificacion, string, string]>
             ).map(([clave, rango, fondo]) => (
               <Tarjeta
@@ -157,7 +157,7 @@ export default async function DashboardPage() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/supervisiones/nueva"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
           >
             <p className="font-medium text-slate-900">Nueva supervisión</p>
             <p className="mt-1 text-sm text-slate-500">
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
           </Link>
           <Link
             href="/agentes"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
           >
             <p className="font-medium text-slate-900">Agentes sanitarios</p>
             <p className="mt-1 text-sm text-slate-500">
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
           </Link>
           <Link
             href="/supervisiones"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
           >
             <p className="font-medium text-slate-900">
               {sesion?.rol === "ADMIN"
@@ -299,28 +299,16 @@ function Tarjeta({
   detalle?: string;
   fondo?: string;
 }) {
-  const coloreada = Boolean(fondo);
-
   return (
     <div
-      className={`rounded-xl border px-4 py-3 ${
+      className={`rounded-xl border px-4 py-3.5 shadow-sm ${
         fondo ?? "border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-xs ${coloreada ? "text-white/80" : "text-slate-500"}`}>
-        {titulo}
-      </p>
-      <p
-        className={`mt-1 text-xl font-semibold ${
-          coloreada ? "text-white" : "text-slate-900"
-        }`}
-      >
-        {valor}
-      </p>
+      <p className="text-xs font-medium text-slate-500">{titulo}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-900">{valor}</p>
       {detalle && (
-        <p className={`mt-1 text-xs ${coloreada ? "text-white/75" : "text-slate-400"}`}>
-          {detalle}
-        </p>
+        <p className="mt-1 text-xs text-slate-400">{detalle}</p>
       )}
     </div>
   );

@@ -17,7 +17,7 @@ function linkClass(activo: boolean) {
     "group flex items-center gap-3 rounded-xl px-3 py-2.5",
     "text-sm font-medium transition",
     activo
-      ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
+      ? "bg-blue-600 text-white shadow-sm"
       : "text-slate-400 hover:bg-white/5 hover:text-white",
   ].join(" ");
 }
@@ -55,7 +55,7 @@ export function NavegacionPanel({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-white shadow-2xl shadow-slate-950/20 transition-transform duration-200 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white shadow-xl shadow-slate-900/20 transition-transform duration-200 ease-out lg:translate-x-0 ${
           abierto ? "translate-x-0" : "-translate-x-full"
         }`}
       >

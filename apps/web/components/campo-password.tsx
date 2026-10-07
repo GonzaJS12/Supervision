@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ds } from "@/lib/ds";
 
 type Props = {
   label: string;
@@ -25,12 +26,12 @@ export function CampoPassword({
   required,
   minLength,
   disabled,
-  className = "mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 pr-24 text-sm",
+  className = "",
 }: Props) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <label className="block text-sm font-semibold text-slate-700">
+    <label className={ds.etiqueta}>
       {label}
       <span className="relative mt-2 block font-normal">
         <input
@@ -45,7 +46,7 @@ export function CampoPassword({
           required={required}
           minLength={minLength}
           disabled={disabled}
-          className={className}
+          className={`${ds.input} mt-0 pr-24 ${className}`}
         />
         <button
           type="button"

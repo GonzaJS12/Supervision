@@ -7,6 +7,7 @@ import {
 } from "../../src/sync/push";
 import { formatearFecha } from "../../src/fechas";
 import { etiquetaEstadoPendiente } from "../../src/etiquetas";
+import { botonPrimario, botonPrimarioTexto, color } from "../../src/tema";
 
 export default function PendientesScreen() {
   const [items, setItems] = useState<
@@ -38,19 +39,12 @@ export default function PendientesScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: color.fondo }}>
       <Pressable
         onPress={() => void enviar()}
-        style={{
-          margin: 16,
-          backgroundColor: "#0f172a",
-          padding: 14,
-          borderRadius: 8,
-        }}
+        style={{ ...botonPrimario, margin: 16 }}
       >
-        <Text style={{ color: "white", textAlign: "center" }}>
-          Enviar pendientes
-        </Text>
+        <Text style={botonPrimarioTexto}>Enviar pendientes</Text>
       </Pressable>
       {mensaje ? (
         <Text style={{ paddingHorizontal: 16 }}>{mensaje}</Text>

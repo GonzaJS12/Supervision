@@ -35,6 +35,24 @@ npm run ci
 
 Ese comando corre las pruebas de dominio y `tsc` de la web.
 
+## Despliegue en Vercel (solo la web)
+
+Expo no se despliega en Vercel. El proyecto es un monorepo: en el dashboard deje **Root Directory** en `apps/web` para que Next.js detecte `next.config.ts`.
+
+1. Cree un PostgreSQL (Neon, Supabase u otro) y aplique el esquema **antes** del primer deploy:
+
+   ```bash
+   npm run db:migrate:deploy
+   ```
+
+   (con `DATABASE_URL` y, si usa pooler, `DIRECT_URL` apuntando a producción).
+
+2. En Vercel: **Add New Project** → el repositorio de Git → **Root Directory:** `apps/web`.
+3. **Node.js Version:** 20.x.
+4. Variables de entorno (Production y Preview): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `CORS_ORIGINS`.
+5. Deploy. La URL pública es la web y la API (`https://….vercel.app/api/v1/health`).
+6. En el móvil, `EXPO_PUBLIC_API_URL` debe ser esa URL (sin barra final).
+
 Si aparecen nombres con caracteres raros (`AcuÃ±a` en vez de `Acuña`), corra `npm run db:reparar:texto` y en la app pulse **Sincronizar**.
 
 PDF en el celular: Inicio y Mis supervisiones exportan el reporte; el detalle de una supervisión exporta esa ficha.

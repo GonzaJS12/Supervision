@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CampoPassword } from "@/components/campo-password";
+import { ds } from "@/lib/ds";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,10 +42,10 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 lg:grid lg:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-slate-900 px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between">
+      <section className="relative hidden overflow-hidden bg-blue-950 px-12 py-16 text-white lg:flex lg:flex-col lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            Gestión sanitaria
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-200">
+            Salud pública
           </p>
           <h1 className="mt-4 max-w-lg text-4xl font-bold leading-tight">
             Sistema de Supervisión de Agentes Sanitarios
@@ -80,21 +81,19 @@ export default function LoginPage() {
               Supervisión sanitaria
             </p>
           </div>
-          <p className="mb-2 text-sm font-semibold text-blue-600">
-            Bienvenido
-          </p>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          <p className={ds.kicker}>Bienvenido</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             Iniciar sesión
           </h2>
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm leading-6 text-slate-500">
             Ingresá tus credenciales para acceder al sistema de supervisión.
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-5">
-            <label className="block text-sm font-semibold text-slate-700">
+            <label className={ds.etiqueta}>
               Correo electrónico
               <input
-                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm"
+                className={ds.input}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -116,10 +115,7 @@ export default function LoginPage() {
             />
 
             {error && (
-              <div
-                role="alert"
-                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              >
+              <div role="alert" className={ds.alertaError}>
                 {error}
               </div>
             )}
@@ -127,7 +123,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              className={`w-full ${ds.botonPrimario}`}
             >
               {cargando ? "Ingresando..." : "Ingresar al sistema"}
             </button>

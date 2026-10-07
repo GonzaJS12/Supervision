@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { extraerMensajeApi } from "@/lib/mensaje-api";
+import { ds } from "@/lib/ds";
 import { etiquetasClasificacion, etiquetasGestion, formatearFecha, formatearFechaHora } from "@/lib/etiquetas";
 
 type SupervisionExport = {
@@ -157,11 +158,11 @@ export function BotonExportarPdf({
         type="button"
         onClick={() => void exportar()}
         disabled={cargando || deshabilitado}
-        className="rounded-lg border border-slate-300 px-4 py-2 text-sm"
+        className={ds.botonSecundario}
       >
         {cargando ? etiquetaCargando : etiqueta}
       </button>
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-800">{error}</p>}
     </div>
   );
 }

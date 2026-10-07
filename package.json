@@ -7,6 +7,9 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run dev:web",
+    "build": "npm run db:generate && npm run build -w @supervision/web",
+    "start": "npm run start -w @supervision/web",
     "dev:web": "npm run dev -w @supervision/web",
     "dev:mobile": "npm run start -w @supervision/mobile",
     "db:generate": "npm run generate -w @supervision/database",
@@ -19,6 +22,10 @@
     "test:domain": "npm run test -w @supervision/domain",
     "typecheck:web": "npm run typecheck -w @supervision/web",
     "ci": "npm run test:domain && npm run typecheck:web"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "engines": {
     "node": ">=20.19.0"

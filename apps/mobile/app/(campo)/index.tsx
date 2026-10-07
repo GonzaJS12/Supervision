@@ -9,7 +9,14 @@ import {
   listarSupervisionesRemotas,
 } from "../../src/db/consultas";
 import { formatearFechaHora } from "../../src/fechas";
-import { etiquetasClasificacion, rangosClasificacion } from "../../src/etiquetas";
+import { etiquetasClasificacion } from "../../src/etiquetas";
+import {
+  botonPrimario,
+  botonPrimarioTexto,
+  clasificacionUi,
+  color,
+  tarjeta,
+} from "../../src/tema";
 import {
   compartirPdf,
   htmlListadoSupervisiones,
@@ -183,16 +190,46 @@ export default function CampoHome() {
 
   return (
     <ScrollView
+      style={{ flex: 1, backgroundColor: color.fondo }}
       contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 32 }}
     >
-      <Text style={{ color: "#2563eb", fontSize: 12, fontWeight: "600" }}>
+      <Text
+        style={{
+          color: color.primario,
+          fontSize: 12,
+          fontWeight: "700",
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+        }}
+      >
         Panel de control
       </Text>
-      <Text style={{ fontSize: 22, fontWeight: "700" }}>Mi actividad</Text>
-      <Text>{nombre}</Text>
-      <Text style={{ color: "#64748b" }}>
+      <Text style={{ fontSize: 24, fontWeight: "700", color: color.texto }}>
+        Mi actividad
+      </Text>
+      <Text style={{ color: color.texto }}>{nombre}</Text>
+      <Text style={{ color: color.textoSuave, lineHeight: 20 }}>
         Resumen de las supervisiones que ha realizado y sus resultados.
       </Text>
+
+      <View
+        style={{
+          ...tarjeta,
+          backgroundColor:
+            pendientes > 0 ? color.avisoSuave : color.exitoSuave,
+          borderColor: pendientes > 0 ? "#fde68a" : "#a7f3d0",
+        }}
+      >
+        <Text style={{ fontWeight: "700", color: color.texto }}>
+          {pendientes > 0
+            ? `${pendientes} pendiente${pendientes === 1 ? "" : "s"} de envío`
+            : "Sin pendientes de envío"}
+        </Text>
+        <Text style={{ color: color.textoSuave, marginTop: 4, fontSize: 12 }}>
+          Última sincronización:{" "}
+          {pulledAt ? formatearFechaHora(pulledAt) : "nunca"}
+        </Text>
+      </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Tarjeta
@@ -223,14 +260,26 @@ export default function CampoHome() {
         Distribución de sus supervisiones según la clasificación obtenida.
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {rangosClasificacion.map(([clave, rango, color]) => (
+        {Object.entries(clasificacionUi).map(([clave, ui]) => (
           <Tarjeta
             key={clave}
-            titulo={etiquetasClasificacion[clave]}
-            valor={String(metricas.clasificaciones[clave])}
-            detalle={rango}
-            fondo={color}
-            claro
+            titulo={etiquetasClasificacion[clave as keyof typeof etiquetasClasificacion]}
+            valor={String(
+              metricas.clasificaciones[
+                clave as keyof typeof metricas.clasificaciones
+              ],
+            )}
+            detalle={
+              clave === "CRITICO"
+                ? "1.0 – 2.5"
+                : clave === "REGULAR"
+                  ? "2.6 – 3.5"
+                  : clave === "BUENO"
+                    ? "3.6 – 4.5"
+                    : "4.6 – 5.0"
+            }
+            fondo={ui.fondo}
+            texto={ui.texto}
           />
         ))}
       </View>
@@ -270,7 +319,7 @@ export default function CampoHome() {
             flexDirection: "row",
           }}
         >
-          {rangosClasificacion.map(([clave, , color]) => {
+          {(Object.keys(clasificacionUi) as Clasificacion[]).map((clave) => {
             const valor = metricas.clasificaciones[clave];
             if (valor <= 0) {
               return null;
@@ -280,7 +329,7 @@ export default function CampoHome() {
                 key={clave}
                 style={{
                   width: `${ancho(valor)}%`,
-                  backgroundColor: color,
+                  backgroundColor: clasificacionUi[clave].barra,
                 }}
               />
             );
@@ -294,7 +343,7 @@ export default function CampoHome() {
             marginTop: 10,
           }}
         >
-          {rangosClasificacion.map(([clave, , color]) => (
+          {(Object.keys(clasificacionUi) as Clasificacion[]).map((clave) => (
             <View
               key={clave}
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
@@ -304,10 +353,10 @@ export default function CampoHome() {
                   width: 8,
                   height: 8,
                   borderRadius: 4,
-                  backgroundColor: color,
+                  backgroundColor: clasificacionUi[clave].barra,
                 }}
               />
-              <Text style={{ color: "#64748b", fontSize: 12 }}>
+              <Text style={{ color: color.textoSuave, fontSize: 12 }}>
                 {etiquetasClasificacion[clave]}
               </Text>
             </View>
@@ -315,14 +364,12 @@ export default function CampoHome() {
         </View>
       </View>
 
-      <Text style={{ color: "#64748b", fontSize: 12 }}>
-        Último pull: {pulledAt ? formatearFechaHora(pulledAt) : "nunca"}
-      </Text>
-      <Text>Pendientes de envío: {pendientes}</Text>
-      {mensaje ? <Text>{mensaje}</Text> : null}
+      {mensaje ? (
+        <Text style={{ color: color.textoMedio }}>{mensaje}</Text>
+      ) : null}
 
-      <Pressable onPress={() => void sincronizar()} style={boton}>
-        <Text style={botonTexto}>Sincronizar</Text>
+      <Pressable onPress={() => void sincronizar()} style={botonPrimario}>
+        <Text style={botonPrimarioTexto}>Sincronizar</Text>
       </Pressable>
 
       <Text style={{ fontSize: 18, fontWeight: "600", marginTop: 4 }}>
@@ -332,35 +379,29 @@ export default function CampoHome() {
         Acceda a las funciones más utilizadas del sistema.
       </Text>
 
+      <Link href="/(campo)/historial" asChild>
+        <Pressable style={botonPrimario}>
+          <Text style={botonPrimarioTexto}>Mis supervisiones</Text>
+        </Pressable>
+      </Link>
+      <Link href="/(campo)/nueva" asChild>
+        <Pressable style={botonPrimario}>
+          <Text style={botonPrimarioTexto}>Nueva supervisión</Text>
+        </Pressable>
+      </Link>
       <Pressable
         onPress={() => void exportarPdf()}
         disabled={exportando}
-        style={botonSec}
+        style={{ ...botonPrimario, opacity: exportando ? 0.6 : 1 }}
       >
-        <Text>{exportando ? "Generando PDF..." : "Exportar reporte PDF"}</Text>
+        <Text style={botonPrimarioTexto}>
+          {exportando ? "Generando PDF..." : "Exportar reporte PDF"}
+        </Text>
       </Pressable>
-      <Link href="/(campo)/nueva" asChild>
-        <Pressable style={boton}>
-          <Text style={botonTexto}>Nueva supervisión</Text>
-        </Pressable>
-      </Link>
-      <Link href="/(campo)/agentes" asChild>
-        <Pressable style={botonSec}>
-          <Text>Agentes sanitarios</Text>
-        </Pressable>
-      </Link>
-      <Link href="/(campo)/pendientes" asChild>
-        <Pressable style={botonSec}>
-          <Text>Cola de envío</Text>
-        </Pressable>
-      </Link>
-      <Link href="/(campo)/historial" asChild>
-        <Pressable style={botonSec}>
-          <Text>Mis supervisiones</Text>
-        </Pressable>
-      </Link>
       <Pressable onPress={() => void salir()}>
-        <Text style={{ color: "#b91c1c", marginTop: 12 }}>Cerrar sesión</Text>
+        <Text style={{ color: color.error, marginTop: 12, fontWeight: "600" }}>
+          Cerrar sesión
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -371,57 +412,40 @@ function Tarjeta({
   valor,
   detalle,
   fondo,
-  claro,
+  texto,
 }: {
   titulo: string;
   valor: string;
   detalle: string;
   fondo?: string;
-  claro?: boolean;
+  texto?: string;
 }) {
-  const texto = claro ? "#ffffff" : "#64748b";
-  const valorColor = claro ? "#ffffff" : "#0f172a";
-  const detalleColor = claro ? "rgba(255,255,255,0.8)" : "#94a3b8";
-
   return (
     <View
       style={{
         minWidth: "30%",
         flexGrow: 1,
-        borderWidth: 1,
-        borderColor: fondo ?? "#e2e8f0",
-        backgroundColor: fondo ?? "white",
-        borderRadius: 12,
-        padding: 12,
+        ...tarjeta,
+        backgroundColor: fondo ?? color.superficie,
+        borderColor: color.borde,
       }}
     >
-      <Text style={{ color: texto, fontSize: 12 }}>{titulo}</Text>
+      <Text style={{ color: texto ?? color.textoSuave, fontSize: 12 }}>
+        {titulo}
+      </Text>
       <Text
         style={{
           fontSize: 22,
           fontWeight: "700",
           marginTop: 4,
-          color: valorColor,
+          color: texto ?? color.texto,
         }}
       >
         {valor}
       </Text>
-      <Text style={{ color: detalleColor, fontSize: 11, marginTop: 4 }}>
+      <Text style={{ color: color.textoSuave, fontSize: 11, marginTop: 4 }}>
         {detalle}
       </Text>
     </View>
   );
 }
-
-const boton = {
-  backgroundColor: "#0f172a",
-  padding: 14,
-  borderRadius: 8,
-};
-const botonTexto = { color: "white", textAlign: "center" as const };
-const botonSec = {
-  borderWidth: 1,
-  borderColor: "#cbd5e1",
-  padding: 14,
-  borderRadius: 8,
-};

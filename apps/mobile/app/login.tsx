@@ -9,6 +9,12 @@ import { router } from "expo-router";
 import { clienteApi } from "../src/api";
 import { guardarSesion } from "../src/auth/storage";
 import { pullCatalogos } from "../src/sync/pull";
+import {
+  botonPrimario,
+  botonPrimarioTexto,
+  campo,
+  color,
+} from "../src/tema";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -49,32 +55,66 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={{ flex: 1, padding: 24, gap: 12, justifyContent: "center" }}>
-      <Text style={{ fontSize: 22, fontWeight: "600" }}>Iniciar sesión</Text>
-      <Text style={{ color: "#2563eb", fontWeight: "600" }}>Bienvenido</Text>
-      <Text style={{ color: "#64748b" }}>
+    <View
+      style={{
+        flex: 1,
+        padding: 24,
+        gap: 12,
+        justifyContent: "center",
+        backgroundColor: color.fondo,
+      }}
+    >
+      <Text
+        style={{
+          color: color.primario,
+          fontSize: 12,
+          fontWeight: "700",
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+        }}
+      >
+        Salud pública
+      </Text>
+      <Text style={{ fontSize: 26, fontWeight: "700", color: color.texto }}>
+        Iniciar sesión
+      </Text>
+      <Text style={{ color: color.textoSuave, lineHeight: 22 }}>
         Ingresá tus credenciales para acceder al sistema de supervisión.
       </Text>
       {error ? (
-        <Text style={{ color: "#b91c1c" }}>{error}</Text>
+        <View
+          style={{
+            backgroundColor: color.errorSuave,
+            borderColor: "#fecaca",
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          <Text style={{ color: color.error }}>{error}</Text>
+        </View>
       ) : null}
-      <Text>Correo electrónico</Text>
+      <Text style={{ fontWeight: "600", color: color.texto, marginTop: 8 }}>
+        Correo electrónico
+      </Text>
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="email"
         keyboardType="email-address"
         placeholder="nombre@correo.com"
+        placeholderTextColor={color.textoSuave}
         value={email}
         onChangeText={setEmail}
         style={campo}
       />
-      <Text>Contraseña</Text>
+      <Text style={{ fontWeight: "600", color: color.texto }}>Contraseña</Text>
       <View style={{ position: "relative" }}>
         <TextInput
           key={verPassword ? "visible" : "oculta"}
           secureTextEntry={!verPassword}
           placeholder="Ingresá tu contraseña"
+          placeholderTextColor={color.textoSuave}
           value={password}
           onChangeText={setPassword}
           autoCorrect={false}
@@ -85,7 +125,7 @@ export default function LoginScreen() {
           onPress={() => setVerPassword((actual) => !actual)}
           style={{ position: "absolute", right: 12, top: 14 }}
         >
-          <Text style={{ color: "#2563eb", fontWeight: "600" }}>
+          <Text style={{ color: color.primario, fontWeight: "600" }}>
             {verPassword ? "Ocultar" : "Mostrar"}
           </Text>
         </Pressable>
@@ -93,24 +133,12 @@ export default function LoginScreen() {
       <Pressable
         onPress={() => void ingresar()}
         disabled={cargando}
-        style={{
-          backgroundColor: "#0f172a",
-          padding: 14,
-          borderRadius: 8,
-          opacity: cargando ? 0.6 : 1,
-        }}
+        style={{ ...botonPrimario, opacity: cargando ? 0.6 : 1, marginTop: 8 }}
       >
-        <Text style={{ color: "white", textAlign: "center" }}>
+        <Text style={botonPrimarioTexto}>
           {cargando ? "Ingresando..." : "Ingresar al sistema"}
         </Text>
       </Pressable>
     </View>
   );
 }
-
-const campo = {
-  borderWidth: 1,
-  borderColor: "#cbd5e1",
-  borderRadius: 8,
-  padding: 12,
-};

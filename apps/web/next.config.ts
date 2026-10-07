@@ -47,11 +47,13 @@ function origenesLan() {
 }
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.join(__dirname, "../.."),
   transpilePackages: [
     "@supervision/domain",
     "@supervision/database",
     "@supervision/api-client",
   ],
+  serverExternalPackages: ["@prisma/client", "prisma"],
   allowedDevOrigins: origenesLan(),
   async rewrites() {
     return [
