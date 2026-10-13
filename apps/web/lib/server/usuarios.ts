@@ -32,11 +32,59 @@ const selectUsuarioListado = {
   createdAt: true,
 } as const;
 
-export async function listarUsuarios() {
-  return prisma.usuario.findMany({
-    select: selectUsuarioListado,
-    orderBy: { apellido: "asc" },
-  });
+const LIMITE_USUARIOS = 15;
+
+export async function resumirUsuarios() {
+  const [total, activos, supervisores, administradores] = await prisma.$transaction([
+    prisma.usuario.count(),
+    prisma.usuario.count({ where: { activo: true } }),
+    prisma.usuario.count({ where: { rol: "SUPERVISOR" } }),
+    prisma.usuario.count({ where: { rol: "ADMIN" } }),
+  ]);
+
+  return { total, activos, supervisores, administradores };
+}
+
+export async function listarUsuarios(params?: {
+  page?: number;
+  q?: string;
+}) {
+  const paginaRaw = params?.page ?? 1;
+  const pagina =
+    Number.isInteger(paginaRaw) && paginaRaw > 0 ? paginaRaw : 1;
+  const limite = LIMITE_USUARIOS;
+  const q = params?.q?.trim();
+
+  const where = q
+    ? {
+        OR: [
+          { nombre: { contains: q, mode: "insensitive" as const } },
+          { apellido: { contains: q, mode: "insensitive" as const } },
+          { email: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
+
+  const [total, usuarios] = await prisma.$transaction([
+    prisma.usuario.count({ where }),
+    prisma.usuario.findMany({
+      where,
+      select: selectUsuarioListado,
+      orderBy: [{ apellido: "asc" }, { nombre: "asc" }],
+      skip: (pagina - 1) * limite,
+      take: limite,
+    }),
+  ]);
+
+  return {
+    data: usuarios,
+    meta: {
+      page: pagina,
+      limit: limite,
+      total,
+      totalPages: total === 0 ? 0 : Math.ceil(total / limite),
+    },
+  };
 }
 
 export async function crearUsuario(datos: {

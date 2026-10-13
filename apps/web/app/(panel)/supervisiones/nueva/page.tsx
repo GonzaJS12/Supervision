@@ -49,7 +49,7 @@ export default async function NuevaSupervisionPage({
         : "No se pudieron cargar los datos del formulario.";
 
     return (
-      <main className="mx-auto max-w-5xl p-8">
+      <div className="w-full">
         <Link
           href="/supervisiones"
           className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm"
@@ -63,12 +63,12 @@ export default async function NuevaSupervisionPage({
           Nueva supervisión
         </h1>
         <p className="mt-4 text-sm text-red-700">{mensaje}</p>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <Link
         href="/supervisiones"
         className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm"
@@ -96,6 +96,6 @@ export default async function NuevaSupervisionPage({
           catalogo.areaFijaId ?? agenteInicial?.areaOperativaId ?? null
         }
       />
-    </main>
+    </div>
   );
 }

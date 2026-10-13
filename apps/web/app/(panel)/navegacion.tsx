@@ -17,9 +17,80 @@ function linkClass(activo: boolean) {
     "group flex items-center gap-3 rounded-xl px-3 py-2.5",
     "text-sm font-medium transition",
     activo
-      ? "bg-blue-600 text-white shadow-sm"
+      ? "bg-white/10 text-white"
       : "text-slate-400 hover:bg-white/5 hover:text-white",
   ].join(" ");
+}
+
+function IconoNav({
+  tipo,
+}: {
+  tipo:
+    | "inicio"
+    | "agentes"
+    | "supervisiones"
+    | "nueva"
+    | "usuarios"
+    | "bloques"
+    | "criterios";
+}) {
+  const comun = "h-[18px] w-[18px] shrink-0";
+  if (tipo === "inicio") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" />
+      </svg>
+    );
+  }
+  if (tipo === "agentes") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <circle cx="9" cy="8" r="3" />
+        <circle cx="16.5" cy="9" r="2.2" />
+        <path strokeLinecap="round" d="M4 19v-1a4 4 0 0 1 4-4h2.5a4 4 0 0 1 4 4v1" />
+        <path strokeLinecap="round" d="M16 19v-.5a3.5 3.5 0 0 1 2.2-3.2" />
+      </svg>
+    );
+  }
+  if (tipo === "supervisiones") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <rect x="6" y="3.5" width="12" height="17" rx="2" />
+        <path strokeLinecap="round" d="M9 8h6M9 12h6M9 16h3.5" />
+      </svg>
+    );
+  }
+  if (tipo === "nueva") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <circle cx="12" cy="12" r="8" />
+        <path strokeLinecap="round" d="M12 8.5v7M8.5 12h7" />
+      </svg>
+    );
+  }
+  if (tipo === "usuarios") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <circle cx="12" cy="8" r="3.2" />
+        <path strokeLinecap="round" d="M6 19v-.8A5.2 5.2 0 0 1 11.2 13h1.6A5.2 5.2 0 0 1 18 18.2V19" />
+      </svg>
+    );
+  }
+  if (tipo === "bloques") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <rect x="4" y="4" width="7" height="7" rx="1.2" />
+        <rect x="13" y="4" width="7" height="7" rx="1.2" />
+        <rect x="4" y="13" width="7" height="7" rx="1.2" />
+        <rect x="13" y="13" width="7" height="7" rx="1.2" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+      <path strokeLinecap="round" d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+    </svg>
+  );
 }
 
 export function NavegacionPanel({
@@ -61,13 +132,20 @@ export function NavegacionPanel({
       >
         <div className="flex h-full flex-col">
           <div className="flex h-20 shrink-0 items-center justify-between border-b border-white/10 px-5">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold tracking-tight text-white">
-                Supervisión
-              </p>
-              <p className="truncate text-xs text-slate-500">
-                Agentes Sanitarios
-              </p>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-400 text-slate-950">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" className="h-5 w-5" aria-hidden>
+                  <path strokeLinecap="round" d="M12 6v12M6 12h12" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold tracking-tight text-white">
+                  Supervisión
+                </p>
+                <p className="truncate text-xs text-slate-500">
+                  Agentes Sanitarios
+                </p>
+              </div>
             </div>
             <button
               type="button"
@@ -89,6 +167,7 @@ export function NavegacionPanel({
                 onClick={() => setAbierto(false)}
                 className={linkClass(activo("/dashboard"))}
               >
+                <IconoNav tipo="inicio" />
                 Inicio
               </Link>
               <Link
@@ -96,6 +175,7 @@ export function NavegacionPanel({
                 onClick={() => setAbierto(false)}
                 className={linkClass(activo("/agentes"))}
               >
+                <IconoNav tipo="agentes" />
                 Agentes
               </Link>
               <Link
@@ -106,6 +186,7 @@ export function NavegacionPanel({
                     /^\/supervisiones\/\d+/.test(pathname),
                 )}
               >
+                <IconoNav tipo="supervisiones" />
                 {esAdmin ? "Supervisiones" : "Mis supervisiones"}
               </Link>
               <Link
@@ -113,6 +194,7 @@ export function NavegacionPanel({
                 onClick={() => setAbierto(false)}
                 className={linkClass(pathname === "/supervisiones/nueva")}
               >
+                <IconoNav tipo="nueva" />
                 Nueva supervisión
               </Link>
             </div>
@@ -128,6 +210,7 @@ export function NavegacionPanel({
                     onClick={() => setAbierto(false)}
                     className={linkClass(activo("/admin/usuarios"))}
                   >
+                    <IconoNav tipo="usuarios" />
                     Usuarios
                   </Link>
                   <Link
@@ -135,6 +218,7 @@ export function NavegacionPanel({
                     onClick={() => setAbierto(false)}
                     className={linkClass(activo("/admin/bloques"))}
                   >
+                    <IconoNav tipo="bloques" />
                     Bloques de evaluación
                   </Link>
                   <Link
@@ -142,6 +226,7 @@ export function NavegacionPanel({
                     onClick={() => setAbierto(false)}
                     className={linkClass(activo("/admin/criterios"))}
                   >
+                    <IconoNav tipo="criterios" />
                     Criterios
                   </Link>
                 </div>

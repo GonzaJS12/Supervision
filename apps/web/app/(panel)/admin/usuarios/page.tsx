@@ -1,40 +1,61 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { obtenerSesion } from "@/lib/sesion";
-import { listarUsuarios } from "@/lib/server/usuarios";
+import { listarUsuarios, resumirUsuarios } from "@/lib/server/usuarios";
+import { BusquedaUsuarios } from "./busqueda";
+import { ds } from "@/lib/ds";
 
-export default async function UsuariosPage() {
+export default async function UsuariosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>;
+}) {
   const sesion = await obtenerSesion();
 
   if (!sesion || sesion.rol !== "ADMIN") {
     redirect("/dashboard");
   }
 
-  let usuarios: Awaited<ReturnType<typeof listarUsuarios>> = [];
+  const query = await searchParams;
+  const page = Number(query.page ?? 1);
+  const q = query.q ?? "";
+
+  let usuarios: Awaited<ReturnType<typeof listarUsuarios>>["data"] = [];
+  let meta = { page: 1, limit: 15, total: 0, totalPages: 0 };
+  let resumen = {
+    total: 0,
+    activos: 0,
+    supervisores: 0,
+    administradores: 0,
+  };
   let error = "";
 
   try {
-    usuarios = await listarUsuarios();
+    const resultado = await listarUsuarios({ page, q });
+    usuarios = resultado.data;
+    meta = resultado.meta;
+    resumen = await resumirUsuarios();
   } catch {
     error = "No se pudieron cargar los usuarios.";
   }
 
-  const activos = usuarios.filter((usuario) => usuario.activo).length;
-  const supervisores = usuarios.filter(
-    (usuario) => usuario.rol === "SUPERVISOR",
-  ).length;
-  const administradores = usuarios.filter(
-    (usuario) => usuario.rol === "ADMIN",
-  ).length;
+  const paramsBase = new URLSearchParams();
+  if (q) {
+    paramsBase.set("q", q);
+  }
+
+  function hrefPagina(p: number) {
+    const params = new URLSearchParams(paramsBase);
+    params.set("page", String(p));
+    return `/admin/usuarios?${params.toString()}`;
+  }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <div className="flex items-center justify-between">
         <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-        Administración
-      </p>
-      <h1 className="mt-1 text-2xl font-semibold text-slate-900">
+          <p className={ds.kicker}>Administración</p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
             Usuarios
           </h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -42,24 +63,37 @@ export default async function UsuariosPage() {
             operativas y estado.
           </p>
         </div>
-        <Link
-          href="/admin/usuarios/nuevo"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
-        >
+        <Link href="/admin/usuarios/nuevo" className={ds.botonPrimario}>
           Nuevo usuario
         </Link>
       </div>
 
-      {error && (
-        <p className="mt-4 text-sm text-red-700">{error}</p>
-      )}
+      {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
-        <Resumen titulo="Usuarios" valor={usuarios.length} detalle="Cuentas registradas" />
-        <Resumen titulo="Activos" valor={activos} detalle="Con acceso habilitado" />
-        <Resumen titulo="Supervisores" valor={supervisores} detalle="Usuarios territoriales" />
-        <Resumen titulo="Administradores" valor={administradores} detalle="Gestión del sistema" />
+        <Resumen
+          titulo="Usuarios"
+          valor={resumen.total}
+          detalle="Cuentas registradas"
+        />
+        <Resumen
+          titulo="Activos"
+          valor={resumen.activos}
+          detalle="Con acceso habilitado"
+        />
+        <Resumen
+          titulo="Supervisores"
+          valor={resumen.supervisores}
+          detalle="Usuarios territoriales"
+        />
+        <Resumen
+          titulo="Administradores"
+          valor={resumen.administradores}
+          detalle="Gestión del sistema"
+        />
       </div>
+
+      <BusquedaUsuarios valor={q} />
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -71,11 +105,10 @@ export default async function UsuariosPage() {
               Cuentas habilitadas para acceder y operar dentro del sistema.
             </p>
           </div>
-          {usuarios.length > 0 && (
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
-              {usuarios.length} {usuarios.length === 1 ? "usuario" : "usuarios"}
-            </span>
-          )}
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+            {meta.total} {meta.total === 1 ? "usuario" : "usuarios"}
+            {q ? " encontrados" : ""}
+          </span>
         </div>
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
@@ -94,19 +127,32 @@ export default async function UsuariosPage() {
                   className="px-4 py-8 text-center text-slate-500"
                   colSpan={5}
                 >
-                  <p className="font-medium text-slate-700">
-                    No hay usuarios registrados
-                  </p>
-                  <p className="mt-1">
-                    Cree la primera cuenta para comenzar a administrar el
-                    acceso al sistema.
-                  </p>
-                  <Link
-                    href="/admin/usuarios/nuevo"
-                    className="mt-4 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
-                  >
-                    Nuevo usuario
-                  </Link>
+                  {q ? (
+                    <>
+                      <p className="font-medium text-slate-700">
+                        No se encontraron usuarios
+                      </p>
+                      <p className="mt-1">
+                        Pruebe con otro nombre, apellido o correo.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium text-slate-700">
+                        No hay usuarios registrados
+                      </p>
+                      <p className="mt-1">
+                        Cree la primera cuenta para comenzar a administrar el
+                        acceso al sistema.
+                      </p>
+                      <Link
+                        href="/admin/usuarios/nuevo"
+                        className="mt-4 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm text-white"
+                      >
+                        Nuevo usuario
+                      </Link>
+                    </>
+                  )}
                 </td>
               </tr>
             )}
@@ -158,7 +204,40 @@ export default async function UsuariosPage() {
           </tbody>
         </table>
       </div>
-    </main>
+
+      {meta.total > 0 && (
+        <p className="mt-4 text-sm text-slate-500">
+          Mostrando{" "}
+          <span className="font-semibold text-slate-700">
+            {(meta.page - 1) * meta.limit + 1}
+          </span>
+          {" – "}
+          <span className="font-semibold text-slate-700">
+            {Math.min(meta.page * meta.limit, meta.total)}
+          </span>
+          {" de "}
+          <span className="font-semibold text-slate-700">{meta.total}</span>
+        </p>
+      )}
+
+      {meta.totalPages > 1 && (
+        <div className="mt-4 flex gap-2 text-sm">
+          {page > 1 && (
+            <Link className="rounded border px-3 py-1" href={hrefPagina(page - 1)}>
+              Anterior
+            </Link>
+          )}
+          <span className="px-2 py-1 text-slate-500">
+            Página {meta.page} de {meta.totalPages}
+          </span>
+          {page < meta.totalPages && (
+            <Link className="rounded border px-3 py-1" href={hrefPagina(page + 1)}>
+              Siguiente
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

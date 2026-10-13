@@ -25,6 +25,22 @@ export function CerrarSesionBoton({
           : "text-slate-600 hover:text-slate-900"
       }
     >
+      {variante === "sidebar" && (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className="h-[18px] w-[18px] shrink-0"
+          aria-hidden
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15 12H4m0 0 3.5-3.5M4 12l3.5 3.5M10 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7"
+          />
+        </svg>
+      )}
       Cerrar sesión
     </button>
   );

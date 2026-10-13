@@ -23,7 +23,7 @@ export default async function BloquesPage() {
   const activos = bloques.filter((bloque) => bloque.activo).length;
 
   return (
-    <main className="mx-auto max-w-7xl p-8">
+    <div className="w-full">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
         Configuración
       </p>
@@ -64,6 +64,6 @@ export default async function BloquesPage() {
         />
       </div>
       <PanelBloques bloques={bloques} />
-    </main>
+    </div>
   );
 }

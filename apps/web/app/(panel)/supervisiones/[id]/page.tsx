@@ -44,7 +44,7 @@ export default async function DetalleSupervisionPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <Link
         href="/supervisiones"
         className="inline-flex items-center justify-center self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
@@ -300,13 +300,13 @@ export default async function DetalleSupervisionPage({
           Volver a supervisiones
         </Link>
       </div>
-    </main>
+    </div>
   );
 }
 
 function ErrorDetalleSupervision({ mensaje }: { mensaje: string }) {
   return (
-    <main className="mx-auto max-w-2xl py-10">
+    <div className="w-full py-10">
       <div className="rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
         <h1 className="text-lg font-bold text-slate-900">
           No se pudo mostrar la supervisión
@@ -319,6 +319,6 @@ function ErrorDetalleSupervision({ mensaje }: { mensaje: string }) {
           Volver a supervisiones
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

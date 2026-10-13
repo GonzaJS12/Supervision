@@ -24,7 +24,7 @@ export default async function CriteriosPage() {
   const bloquesActivos = bloques.filter((bloque) => bloque.activo).length;
 
   return (
-    <main className="mx-auto max-w-7xl p-8">
+    <div className="w-full">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
         Configuración
       </p>
@@ -65,6 +65,6 @@ export default async function CriteriosPage() {
         />
       </div>
       <PanelCriterios bloques={bloques} />
-    </main>
+    </div>
   );
 }

@@ -27,7 +27,7 @@ export function TarjetaResumen({
           <p className="mt-1 text-xs text-slate-400">{detalle}</p>
         </div>
         <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${icono}`}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${icono}`}
         >
           <span className="text-lg font-bold">•</span>
         </div>

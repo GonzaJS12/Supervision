@@ -55,7 +55,7 @@ export default async function DetalleAgentePage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-8">
+    <div className="w-full space-y-6">
       <Link
         href="/agentes"
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-blue-600"
@@ -199,7 +199,7 @@ export default async function DetalleAgentePage({
           </div>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -238,7 +238,7 @@ function ClasificacionBadge({
 
 function ErrorDetalleAgente({ mensaje }: { mensaje: string }) {
   return (
-    <main className="mx-auto max-w-5xl space-y-5 p-8">
+    <div className="w-full space-y-5">
       <Link
         href="/agentes"
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-blue-600"
@@ -252,6 +252,6 @@ function ErrorDetalleAgente({ mensaje }: { mensaje: string }) {
         <p className="font-semibold">No se pudo mostrar el agente</p>
         <p className="mt-1 text-red-600">{mensaje}</p>
       </div>
-    </main>
+    </div>
   );
 }

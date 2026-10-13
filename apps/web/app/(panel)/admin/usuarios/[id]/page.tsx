@@ -49,7 +49,7 @@ export default async function DetalleUsuarioPage({
   }
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-8">
+    <div className="w-full space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">
@@ -67,13 +67,13 @@ export default async function DetalleUsuarioPage({
         </Link>
       </div>
       <FormularioEditarUsuario usuario={usuario} areas={areas} />
-    </main>
+    </div>
   );
 }
 
 function ErrorDetalleUsuario({ mensaje }: { mensaje: string }) {
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {mensaje}
       </div>
@@ -83,6 +83,6 @@ function ErrorDetalleUsuario({ mensaje }: { mensaje: string }) {
       >
         Volver
       </Link>
-    </main>
+    </div>
   );
 }

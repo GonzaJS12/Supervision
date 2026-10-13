@@ -3,15 +3,19 @@ import { requerirAdmin } from "@/lib/requerir";
 import { jsonError, jsonSiHayExtras, jsonValidacion, enteroDesdeDto } from "@/lib/errores";
 import { listarUsuarios, crearUsuario } from "@/lib/server/usuarios";
 
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await requerirAdmin();
   if (admin instanceof NextResponse) {
     return admin;
   }
 
+  const url = new URL(request.url);
+  const page = Number(url.searchParams.get("page") ?? 1);
+  const q = url.searchParams.get("q") ?? "";
+
   try {
-    const usuarios = await listarUsuarios();
-    return NextResponse.json(usuarios);
+    const resultado = await listarUsuarios({ page, q });
+    return NextResponse.json(resultado);
   } catch (error) {
     return jsonError(error);
   }

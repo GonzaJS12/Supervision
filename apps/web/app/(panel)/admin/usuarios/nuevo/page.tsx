@@ -21,7 +21,7 @@ export default async function NuevoUsuarioPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
@@ -46,6 +46,6 @@ export default async function NuevoUsuarioPage() {
         <p className="mt-4 text-sm text-red-700">{error}</p>
       )}
       <FormularioUsuario areas={areas} />
-    </main>
+    </div>
   );
 }

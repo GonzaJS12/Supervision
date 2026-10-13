@@ -22,21 +22,23 @@ export default async function DashboardPage() {
     }
   }
 
+  const esAdmin = sesion?.rol === "ADMIN";
+
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
-        Panel de control
-      </p>
-      <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-        {sesion?.rol === "ADMIN" ? "Resumen general" : "Mi actividad"}
-      </h1>
-      <p className="mt-2 text-slate-600">
-        {sesion?.rol === "ADMIN"
-          ? "Información general sobre agentes y supervisiones registradas en el sistema."
-          : "Resumen de las supervisiones que ha realizado y sus resultados."}
-      </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+            Panel de control
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold text-slate-900 sm:text-3xl">
+            {esAdmin ? "Resumen general" : "Mi actividad"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {esAdmin
+              ? "Información general sobre agentes y supervisiones registradas en el sistema."
+              : "Resumen de las supervisiones que ha realizado y sus resultados."}
+          </p>
         </div>
         {sesion?.rol === "SUPERVISOR" && (
           <BotonExportarPdf
@@ -56,88 +58,90 @@ export default async function DashboardPage() {
 
       {metricas && (
         <div
-          className={`mt-6 grid gap-3 sm:grid-cols-2 ${
-            sesion?.rol === "ADMIN" ? "xl:grid-cols-5" : "lg:grid-cols-3"
+          className={`mt-6 grid gap-4 sm:grid-cols-2 ${
+            esAdmin ? "xl:grid-cols-5" : "lg:grid-cols-3"
           }`}
         >
-          {sesion?.rol === "ADMIN" && (
+          {esAdmin && (
             <>
-              <Tarjeta
+              <TarjetaKpi
                 titulo="Agentes"
                 valor={String(metricas.totalAgentes ?? 0)}
                 detalle="Registrados"
+                tono="azul"
+                icono="agentes"
               />
-              <Tarjeta
+              <TarjetaKpi
                 titulo="Agentes activos"
                 valor={String(metricas.totalAgentesActivos ?? 0)}
                 detalle="Actualmente activos"
+                tono="celeste"
+                icono="activos"
               />
             </>
           )}
-          <Tarjeta
-            titulo={
-              sesion?.rol === "ADMIN"
-                ? "Supervisiones"
-                : "Mis supervisiones"
-            }
+          <TarjetaKpi
+            titulo={esAdmin ? "Supervisiones" : "Mis supervisiones"}
             valor={String(metricas.totalSupervisiones)}
-            detalle={
-              sesion?.rol === "ADMIN"
-                ? "Realizadas en total"
-                : "Realizadas por usted"
-            }
+            detalle={esAdmin ? "Realizadas en total" : "Realizadas por usted"}
+            tono="violeta"
+            icono="lista"
           />
-          <Tarjeta
+          <TarjetaKpi
             titulo="Este mes"
             valor={String(metricas.supervisionesMes)}
-            detalle={
-              sesion?.rol === "ADMIN"
-                ? "Supervisiones realizadas"
-                : "Sus supervisiones"
-            }
+            detalle={esAdmin ? "Supervisiones realizadas" : "Sus supervisiones"}
+            tono="indigo"
+            icono="calendario"
           />
-          <Tarjeta
+          <TarjetaKpi
             titulo="Promedio general"
             valor={
               metricas.promedioGeneral == null
                 ? "-"
                 : metricas.promedioGeneral.toFixed(2)
             }
-            detalle={
-              sesion?.rol === "ADMIN"
-                ? "Promedio global"
-                : "Promedio de sus evaluaciones"
-            }
+            detalle={esAdmin ? "Promedio global" : "Promedio de sus evaluaciones"}
+            tono="verde"
+            icono="grafico"
           />
         </div>
       )}
 
       {metricas && (
-        <section className="mt-6">
-          <h2 className="text-lg font-medium text-slate-900">
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-900">
             Resultados de las supervisiones
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            {sesion?.rol === "ADMIN"
+            {esAdmin
               ? "Distribución global de las supervisiones según su clasificación."
               : "Distribución de sus supervisiones según la clasificación obtenida."}
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {(
               [
-                ["CRITICO", "1.0 – 2.5", "border-red-200 bg-red-50"],
-                ["REGULAR", "2.6 – 3.5", "border-amber-200 bg-amber-50"],
-                ["BUENO", "3.6 – 4.5", "border-blue-200 bg-blue-50"],
-                ["EXCELENTE", "4.6 – 5.0", "border-emerald-200 bg-emerald-50"],
-              ] as Array<[Clasificacion, string, string]>
-            ).map(([clave, rango, fondo]) => (
-              <Tarjeta
+                ["CRITICO", "1.0 – 2.5", "bg-red-500", "bg-red-50"],
+                ["REGULAR", "2.6 – 3.5", "bg-amber-500", "bg-amber-50"],
+                ["BUENO", "3.6 – 4.5", "bg-blue-500", "bg-blue-50"],
+                ["EXCELENTE", "4.6 – 5.0", "bg-emerald-500", "bg-emerald-50"],
+              ] as Array<[Clasificacion, string, string, string]>
+            ).map(([clave, rango, punto, fondo]) => (
+              <div
                 key={clave}
-                titulo={etiquetasClasificacion[clave]}
-                valor={String(metricas.clasificaciones[clave])}
-                detalle={rango}
-                fondo={fondo}
-              />
+                className={`rounded-2xl ${fondo} px-4 py-4`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${punto}`} />
+                  <p className="text-sm font-semibold text-slate-700">
+                    {etiquetasClasificacion[clave]}
+                  </p>
+                </div>
+                <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+                  {metricas.clasificaciones[clave]}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">{rango}</p>
+              </div>
             ))}
           </div>
           <DistribucionClasificaciones
@@ -150,53 +154,33 @@ export default async function DashboardPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-medium text-slate-900">Accesos rápidos</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Accesos rápidos</h2>
         <p className="mt-1 text-sm text-slate-500">
           Acceda a las funciones más utilizadas del sistema.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <AccesoRapido
             href="/supervisiones/nueva"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
-          >
-            <p className="font-medium text-slate-900">Nueva supervisión</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Registrar una nueva evaluación de un agente sanitario.
-            </p>
-            <p className="mt-4 text-sm font-semibold text-blue-600">
-              Abrir →
-            </p>
-          </Link>
-          <Link
+            titulo="Nueva supervisión"
+            detalle="Registrar una nueva evaluación de un agente sanitario."
+            icono="nueva"
+          />
+          <AccesoRapido
             href="/agentes"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
-          >
-            <p className="font-medium text-slate-900">Agentes sanitarios</p>
-            <p className="mt-1 text-sm text-slate-500">
-              Consultar los agentes disponibles y su información territorial.
-            </p>
-            <p className="mt-4 text-sm font-semibold text-blue-600">
-              Abrir →
-            </p>
-          </Link>
-          <Link
+            titulo="Agentes sanitarios"
+            detalle="Consultar los agentes disponibles y su información territorial."
+            icono="agentes"
+          />
+          <AccesoRapido
             href="/supervisiones"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
-          >
-            <p className="font-medium text-slate-900">
-              {sesion?.rol === "ADMIN"
-                ? "Supervisiones"
-                : "Mis supervisiones"}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {sesion?.rol === "ADMIN"
+            titulo={esAdmin ? "Supervisiones" : "Mis supervisiones"}
+            detalle={
+              esAdmin
                 ? "Consultar todas las supervisiones registradas en el sistema."
-                : "Consultar el historial de supervisiones que ha realizado."}
-            </p>
-            <p className="mt-4 text-sm font-semibold text-blue-600">
-              Abrir →
-            </p>
-          </Link>
+                : "Consultar el historial de supervisiones que ha realizado."
+            }
+            icono="lista"
+          />
         </div>
       </section>
 
@@ -204,35 +188,38 @@ export default async function DashboardPage() {
         <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-lg font-medium text-slate-900">
-                {sesion?.rol === "ADMIN"
+              <h2 className="text-lg font-semibold text-slate-900">
+                {esAdmin
                   ? "Últimas supervisiones"
                   : "Mis últimas supervisiones"}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                {sesion?.rol === "ADMIN"
+                {esAdmin
                   ? "Supervisiones registradas recientemente en el sistema."
                   : "Sus supervisiones realizadas más recientemente."}
               </p>
             </div>
             <Link
               href="/supervisiones"
-              className="text-sm font-semibold text-blue-600 underline"
+              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
               Ver todas
             </Link>
           </div>
           {metricas.ultimasSupervisiones.length === 0 ? (
-            <p className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-              {sesion?.rol === "ADMIN"
+            <p className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+              {esAdmin
                 ? "Todavía no hay supervisiones registradas."
                 : "Todavía no ha realizado supervisiones."}
             </p>
           ) : (
-            <ul className="mt-3 divide-y rounded-xl border border-slate-200 bg-white">
+            <ul className="mt-4 divide-y rounded-2xl border border-slate-200 bg-white">
               {metricas.ultimasSupervisiones.map((item) => (
-                <li key={item.id} className="px-4 py-3 text-sm">
-                  <Link href={`/supervisiones/${item.id}`} className="underline">
+                <li key={item.id} className="px-5 py-4 text-sm">
+                  <Link
+                    href={`/supervisiones/${item.id}`}
+                    className="font-semibold text-slate-900 hover:text-blue-600"
+                  >
                     {item.agenteSanitario.apellido}, {item.agenteSanitario.nombre}
                   </Link>
                   <p className="mt-1 text-xs text-slate-500">
@@ -246,7 +233,7 @@ export default async function DashboardPage() {
                     <span className="font-medium text-slate-700">
                       {item.areaOperativa.nombre}
                     </span>
-                    {sesion?.rol === "ADMIN" &&
+                    {esAdmin &&
                       (() => {
                         const supervisor =
                           "supervisor" in item
@@ -284,33 +271,126 @@ export default async function DashboardPage() {
           )}
         </section>
       )}
-    </main>
+    </div>
   );
 }
 
-function Tarjeta({
+function Icono({
+  tipo,
+}: {
+  tipo: "agentes" | "activos" | "lista" | "calendario" | "grafico" | "nueva";
+}) {
+  const comun = "h-5 w-5";
+  if (tipo === "agentes") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <path strokeLinecap="round" d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+        <circle cx="9.5" cy="7" r="3" />
+        <path strokeLinecap="round" d="M20 8v6M17 11h6" />
+      </svg>
+    );
+  }
+  if (tipo === "activos") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path strokeLinecap="round" d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+  if (tipo === "lista") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <path strokeLinecap="round" d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01" />
+      </svg>
+    );
+  }
+  if (tipo === "calendario") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <rect x="4" y="5" width="16" height="15" rx="2" />
+        <path strokeLinecap="round" d="M8 3v4M16 3v4M4 10h16" />
+      </svg>
+    );
+  }
+  if (tipo === "nueva") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path strokeLinecap="round" d="M12 8v8M8 12h8" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={comun} aria-hidden>
+      <path strokeLinecap="round" d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+    </svg>
+  );
+}
+
+function TarjetaKpi({
   titulo,
   valor,
   detalle,
-  fondo,
+  tono,
+  icono,
 }: {
   titulo: string;
   valor: string;
-  detalle?: string;
-  fondo?: string;
+  detalle: string;
+  tono: "azul" | "celeste" | "violeta" | "indigo" | "verde";
+  icono: "agentes" | "activos" | "lista" | "calendario" | "grafico";
+}) {
+  const color = {
+    azul: "bg-blue-50 text-blue-600",
+    celeste: "bg-sky-50 text-sky-600",
+    violeta: "bg-violet-50 text-violet-600",
+    indigo: "bg-indigo-50 text-indigo-600",
+    verde: "bg-emerald-50 text-emerald-600",
+  }[tono];
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-slate-500">{titulo}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+            {valor}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">{detalle}</p>
+        </div>
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${color}`}
+        >
+          <Icono tipo={icono} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccesoRapido({
+  href,
+  titulo,
+  detalle,
+  icono,
+}: {
+  href: string;
+  titulo: string;
+  detalle: string;
+  icono: "nueva" | "agentes" | "lista";
 }) {
   return (
-    <div
-      className={`rounded-xl border px-4 py-3.5 shadow-sm ${
-        fondo ?? "border-slate-200 bg-white"
-      }`}
+    <Link
+      href={href}
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40"
     >
-      <p className="text-xs font-medium text-slate-500">{titulo}</p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">{valor}</p>
-      {detalle && (
-        <p className="mt-1 text-xs text-slate-400">{detalle}</p>
-      )}
-    </div>
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+        <Icono tipo={icono} />
+      </div>
+      <p className="mt-4 font-semibold text-slate-900">{titulo}</p>
+      <p className="mt-1 text-sm text-slate-500">{detalle}</p>
+    </Link>
   );
 }
 
@@ -343,38 +423,34 @@ function DistribucionClasificaciones({
         </p>
       </div>
       {total === 0 ? (
-        <div className="h-3 overflow-hidden rounded-full bg-slate-100" />
+        <div className="h-2.5 overflow-hidden rounded-full bg-slate-100" />
       ) : (
         <div
-          className="flex h-3 overflow-hidden rounded-full bg-slate-100"
+          className="flex h-2.5 overflow-hidden rounded-full bg-slate-100"
           aria-label="Distribución de clasificaciones"
         >
           {critico > 0 && (
             <div
               className="bg-red-500"
               style={{ width: `${porcentaje(critico)}%` }}
-              title={`Crítico: ${critico}`}
             />
           )}
           {regular > 0 && (
             <div
               className="bg-amber-500"
               style={{ width: `${porcentaje(regular)}%` }}
-              title={`Regular: ${regular}`}
             />
           )}
           {bueno > 0 && (
             <div
               className="bg-blue-500"
               style={{ width: `${porcentaje(bueno)}%` }}
-              title={`Bueno: ${bueno}`}
             />
           )}
           {excelente > 0 && (
             <div
               className="bg-emerald-500"
               style={{ width: `${porcentaje(excelente)}%` }}
-              title={`Excelente: ${excelente}`}
             />
           )}
         </div>

@@ -65,7 +65,7 @@ export default async function SupervisionesPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
@@ -349,6 +349,6 @@ export default async function SupervisionesPage({
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

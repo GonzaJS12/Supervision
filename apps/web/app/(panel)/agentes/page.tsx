@@ -77,7 +77,7 @@ export default async function AgentesPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
+    <div className="w-full">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
         Gestión territorial
       </p>
@@ -311,6 +311,6 @@ export default async function AgentesPage({
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
