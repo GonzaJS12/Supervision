@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import { COOKIE_SESION, leerSesion, type SesionUsuario } from "./auth";
 
 export type ResultadoAuth =

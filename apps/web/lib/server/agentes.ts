@@ -1,4 +1,4 @@
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import { LIMITE_POR_PAGINA } from "@supervision/domain";
 import type { SesionUsuario } from "@/lib/auth";
 import { ErrorNegocio } from "@/lib/errores";

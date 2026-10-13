@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import { resolverAuth } from "@/lib/sesion";
 import { ErrorNegocio, jsonError } from "@/lib/errores";
 

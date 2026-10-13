@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@supervision/database";
+import { prisma, resumenDatabaseUrl } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const tieneDatabaseUrl = Boolean(process.env["DATABASE_URL"]?.trim());
+  const resumen = resumenDatabaseUrl();
 
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -13,7 +13,7 @@ export async function GET() {
       status: "ok",
       servicio: "supervision-aps",
       db: "connected",
-      tieneDatabaseUrl,
+      ...resumen,
     });
   } catch (error) {
     const codigo =
@@ -29,7 +29,7 @@ export async function GET() {
         status: "error",
         servicio: "supervision-aps",
         db: "disconnected",
-        tieneDatabaseUrl,
+        ...resumen,
         codigo,
         detalle,
       },

@@ -1,4 +1,4 @@
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { ErrorNegocio } from "@/lib/errores";
 import { normalizarEmail } from "@/lib/email";

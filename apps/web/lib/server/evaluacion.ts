@@ -1,4 +1,4 @@
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import { ErrorNegocio } from "@/lib/errores";
 
 export async function listarBloques() {

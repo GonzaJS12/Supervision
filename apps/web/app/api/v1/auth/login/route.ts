@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@supervision/database";
+import { prisma } from "@/lib/prisma";
 import {
   COOKIE_SESION,
   firmarSesion,
