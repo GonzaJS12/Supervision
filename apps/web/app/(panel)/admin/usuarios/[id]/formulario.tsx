@@ -99,8 +99,14 @@ export function FormularioEditarUsuario({
       return;
     }
 
-    if (password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
+    if (
+      password.length < 10 ||
+      !/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(password) ||
+      !/\d/.test(password)
+    ) {
+      setError(
+        "La contraseña debe tener al menos 10 caracteres, una letra y un número.",
+      );
       return;
     }
 
@@ -329,14 +335,15 @@ export function FormularioEditarUsuario({
             <h3 className="font-semibold text-slate-800">Cambiar contraseña</h3>
             <p className="text-sm text-slate-500">
               Ingrese la nueva contraseña para {usuario.nombre}{" "}
-              {usuario.apellido}.
+              {usuario.apellido}. Debe tener al menos 10 caracteres, una
+              letra y un número.
             </p>
             <CampoPassword
               label="Nueva contraseña"
               name="password"
               required
-              minLength={8}
-              placeholder="Mínimo 8 caracteres"
+              minLength={10}
+              placeholder="Mínimo 10 caracteres, letra y número"
               autoComplete="new-password"
               className="mt-1 w-full rounded-lg border px-3 py-2 pr-24 font-normal"
             />
@@ -344,7 +351,7 @@ export function FormularioEditarUsuario({
               label="Confirmar contraseña"
               name="confirmarPassword"
               required
-              minLength={8}
+              minLength={10}
               placeholder="Repita la contraseña"
               autoComplete="new-password"
               className="mt-1 w-full rounded-lg border px-3 py-2 pr-24 font-normal"

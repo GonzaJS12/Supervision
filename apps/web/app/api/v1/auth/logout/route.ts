@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
-import { COOKIE_SESION } from "@/lib/auth";
+import { atributosCookieSesion } from "@/lib/auth";
 
 export function POST() {
   const respuesta = NextResponse.json({ ok: true });
-
   respuesta.cookies.set({
-    name: COOKIE_SESION,
-    value: "",
-    httpOnly: true,
-    path: "/",
-    maxAge: 0,
+    ...atributosCookieSesion("", 0),
+    expires: new Date(0),
   });
-
   return respuesta;
 }
-
-export const GET = POST;

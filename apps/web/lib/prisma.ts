@@ -63,7 +63,4 @@ function crearPrisma() {
 }
 
 export const prisma = globalForPrisma.prismaWeb ?? crearPrisma();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prismaWeb = prisma;
-}
+globalForPrisma.prismaWeb = prisma;

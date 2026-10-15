@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin } from "@/lib/requerir";
 import { jsonError, jsonSiHayExtras, jsonValidacion, enteroDesdeDto } from "@/lib/errores";
+import { mensajePasswordInvalida } from "@supervision/domain";
 import { listarUsuarios, crearUsuario } from "@/lib/server/usuarios";
 
 export async function GET(request: Request) {
@@ -86,10 +87,9 @@ export async function POST(request: Request) {
     return jsonValidacion("password must be a string");
   }
 
-  if (cuerpo.password.length < 8) {
-    return jsonValidacion(
-      "password must be longer than or equal to 8 characters",
-    );
+  const passwordInvalida = mensajePasswordInvalida(cuerpo.password);
+  if (passwordInvalida) {
+    return jsonValidacion(passwordInvalida);
   }
 
   if (cuerpo.rol !== "ADMIN" && cuerpo.rol !== "SUPERVISOR") {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requerirAdmin, requerirSesion } from "@/lib/requerir";
+import { MAX_TEXTO_OBSERVACION } from "@supervision/domain";
 import { jsonError, jsonSiHayExtras, jsonValidacion, ErrorNegocio } from "@/lib/errores";
 import {
   crearSupervision,
@@ -181,6 +182,12 @@ export async function POST(request: Request) {
   for (const [campo, valor] of camposTexto) {
     if (valor !== undefined && typeof valor !== "string") {
       return jsonValidacion(`${campo} must be a string`);
+    }
+
+    if (typeof valor === "string" && valor.length > MAX_TEXTO_OBSERVACION) {
+      return jsonValidacion(
+        `${campo} must be shorter than or equal to ${MAX_TEXTO_OBSERVACION} characters`,
+      );
     }
   }
 

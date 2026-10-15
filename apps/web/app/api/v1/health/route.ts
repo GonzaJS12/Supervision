@@ -3,8 +3,15 @@ import { prisma, resumenDatabaseUrl } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+function incluirDiagnostico() {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.HEALTH_DETALLE === "1"
+  );
+}
+
 export async function GET() {
-  const resumen = resumenDatabaseUrl();
+  const diagnostico = incluirDiagnostico() ? resumenDatabaseUrl() : {};
 
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -13,27 +20,26 @@ export async function GET() {
       status: "ok",
       servicio: "supervision-aps",
       db: "connected",
-      ...resumen,
+      ...diagnostico,
     });
   } catch (error) {
-    const codigo =
-      error && typeof error === "object" && "code" in error
-        ? String((error as { code?: unknown }).code)
-        : undefined;
-    const crudo =
-      error instanceof Error ? error.message : "error de conexion";
-    const detalle = crudo.replace(/postgresql:\/\/\S+/gi, "[redacted]");
+    const cuerpo: Record<string, unknown> = {
+      status: "error",
+      servicio: "supervision-aps",
+      db: "disconnected",
+      ...diagnostico,
+    };
 
-    return NextResponse.json(
-      {
-        status: "error",
-        servicio: "supervision-aps",
-        db: "disconnected",
-        ...resumen,
-        codigo,
-        detalle,
-      },
-      { status: 503 },
-    );
+    if (incluirDiagnostico()) {
+      cuerpo.codigo =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : undefined;
+      const crudo =
+        error instanceof Error ? error.message : "error de conexion";
+      cuerpo.detalle = crudo.replace(/postgresql:\/\/\S+/gi, "[redacted]");
+    }
+
+    return NextResponse.json(cuerpo, { status: 503 });
   }
 }

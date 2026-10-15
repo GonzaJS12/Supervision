@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { LIMITE_POR_PAGINA } from "@supervision/domain";
+import {
+  LIMITE_POR_PAGINA,
+  paginaLista,
+  recortarBusqueda,
+} from "@supervision/domain";
 import type { SesionUsuario } from "@/lib/auth";
 import { ErrorNegocio } from "@/lib/errores";
 import { areaDelSupervisor, asegurarAreaPermitida } from "@/lib/server/catalogo";
@@ -12,9 +16,7 @@ export async function listarAgentes(params: {
   areaOperativaId?: number;
   sectorId?: number;
 }) {
-  const paginaRaw = params.page ?? 1;
-  const pagina =
-    Number.isInteger(paginaRaw) && paginaRaw > 0 ? paginaRaw : 1;
+  const pagina = paginaLista(params.page);
   const limiteRaw = params.limit ?? LIMITE_POR_PAGINA;
   const limite =
     Number.isInteger(limiteRaw) && limiteRaw > 0
@@ -30,7 +32,7 @@ export async function listarAgentes(params: {
     sectorId?: number;
   } = {};
 
-  const nombre = params.nombre?.trim();
+  const nombre = recortarBusqueda(params.nombre);
 
   if (nombre) {
     where.OR = [

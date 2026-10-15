@@ -41,16 +41,21 @@ export async function resolverAuth(): Promise<ResultadoAuth> {
       rol: true,
       activo: true,
       areaOperativaId: true,
+      tokenVersion: true,
       areaOperativa: { select: { nombre: true } },
     },
   });
 
   if (!usuario) {
-    return { error: "Usuario no encontrado", status: 401 };
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  if (usuario.tokenVersion !== sesion.tokenVersion) {
+    return { error: "Unauthorized", status: 401 };
   }
 
   if (!usuario.activo) {
-    return { error: "Usuario inactivo", status: 401 };
+    return { error: "Unauthorized", status: 401 };
   }
 
   return {
@@ -62,6 +67,7 @@ export async function resolverAuth(): Promise<ResultadoAuth> {
       apellido: usuario.apellido,
       areaOperativaId: usuario.areaOperativaId,
       areaOperativaNombre: usuario.areaOperativa?.nombre ?? null,
+      tokenVersion: usuario.tokenVersion,
     },
   };
 }

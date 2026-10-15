@@ -101,6 +101,7 @@ export default function LoginPage() {
                 placeholder="nombre@correo.com"
                 required
                 disabled={cargando}
+                suppressHydrationWarning
               />
             </label>
 

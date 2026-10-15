@@ -11,12 +11,12 @@ export async function obtenerDb() {
   db = await SQLite.openDatabaseAsync("supervision_aps.db");
   await db.execAsync(SQL_ESQUEMA);
 
-  try {
+  const columnas = await db.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(agentes)",
+  );
+
+  if (!columnas.some((columna) => columna.name === "cobertura")) {
     await db.execAsync("ALTER TABLE agentes ADD COLUMN cobertura TEXT");
-  } catch {
-    /*
-     * La columna ya existe en bases nuevas.
-     */
   }
 
   await db.execAsync(`

@@ -1,5 +1,8 @@
+import { Prisma } from "@prisma/client";
+import { MAX_PENDIENTES_SYNC } from "@supervision/domain";
 import { ErrorNegocio } from "@/lib/errores";
 import type { SesionUsuario } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
   obtenerCatalogoFormulario,
   obtenerTerritorio,
@@ -59,6 +62,10 @@ export type PendienteSync = DatosCrearSupervision & {
   localId: string;
 };
 
+function claveSync(sesionId: number, localId: string) {
+  return `sync:${sesionId}:${localId}`.slice(0, 180);
+}
+
 export async function empujarPendientes(
   sesion: SesionUsuario,
   pendientes: PendienteSync[],
@@ -70,6 +77,12 @@ export async function empujarPendientes(
     );
   }
 
+  if (pendientes.length > MAX_PENDIENTES_SYNC) {
+    throw new ErrorNegocio(
+      `No se pueden sincronizar más de ${MAX_PENDIENTES_SYNC} supervisiones por envío`,
+    );
+  }
+
   const resultados: Array<{
     localId: string;
     ok: boolean;
@@ -78,19 +91,57 @@ export async function empujarPendientes(
   }> = [];
 
   for (const pendiente of pendientes) {
+    const claveIdempotencia = claveSync(sesion.id, pendiente.localId);
+
     try {
-      const creada = await crearSupervision(sesion, pendiente);
+      const existente = await prisma.supervision.findUnique({
+        where: { claveIdempotencia },
+        select: { id: true },
+      });
+
+      if (existente) {
+        resultados.push({
+          localId: pendiente.localId,
+          ok: true,
+          remoteId: existente.id,
+        });
+        continue;
+      }
+
+      const creada = await crearSupervision(sesion, {
+        ...pendiente,
+        claveIdempotencia,
+      });
       resultados.push({
         localId: pendiente.localId,
         ok: true,
         remoteId: creada.id,
       });
     } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existente = await prisma.supervision.findUnique({
+          where: { claveIdempotencia },
+          select: { id: true },
+        });
+
+        if (existente) {
+          resultados.push({
+            localId: pendiente.localId,
+            ok: true,
+            remoteId: existente.id,
+          });
+          continue;
+        }
+      }
+
       resultados.push({
         localId: pendiente.localId,
         ok: false,
         error:
-          error instanceof Error
+          error instanceof ErrorNegocio
             ? error.message
             : "No se pudo sincronizar",
       });

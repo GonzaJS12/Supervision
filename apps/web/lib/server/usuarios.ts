@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import {
+  mensajePasswordInvalida,
+  paginaLista,
+  recortarBusqueda,
+} from "@supervision/domain";
 import { ErrorNegocio } from "@/lib/errores";
 import { normalizarEmail } from "@/lib/email";
 
@@ -49,11 +54,9 @@ export async function listarUsuarios(params?: {
   page?: number;
   q?: string;
 }) {
-  const paginaRaw = params?.page ?? 1;
-  const pagina =
-    Number.isInteger(paginaRaw) && paginaRaw > 0 ? paginaRaw : 1;
+  const pagina = paginaLista(params?.page);
   const limite = LIMITE_USUARIOS;
-  const q = params?.q?.trim();
+  const q = recortarBusqueda(params?.q);
 
   const where = q
     ? {
@@ -105,10 +108,9 @@ export async function crearUsuario(datos: {
     throw new ErrorNegocio("Ya existe un usuario con ese email", 409);
   }
 
-  if (datos.password.length < 8) {
-    throw new ErrorNegocio(
-      "password must be longer than or equal to 8 characters",
-    );
+  const passwordInvalida = mensajePasswordInvalida(datos.password);
+  if (passwordInvalida) {
+    throw new ErrorNegocio(passwordInvalida);
   }
 
   let areaOperativaId: number | null = null;
@@ -176,9 +178,25 @@ export async function cambiarEstadoUsuario(
     throw new ErrorNegocio("No puede desactivar su propia cuenta");
   }
 
+  if (activo === false && usuario.rol === "ADMIN") {
+    const otrosAdmin = await prisma.usuario.count({
+      where: { rol: "ADMIN", activo: true, id: { not: id } },
+    });
+
+    if (otrosAdmin === 0) {
+      throw new ErrorNegocio(
+        "Debe quedar al menos un administrador activo",
+        409,
+      );
+    }
+  }
+
   return prisma.usuario.update({
     where: { id },
-    data: { activo },
+    data: {
+      activo,
+      ...(activo === false ? { tokenVersion: { increment: 1 } } : {}),
+    },
     select: selectUsuario,
   });
 }
@@ -260,10 +278,9 @@ export async function cambiarPasswordUsuario(
   id: number,
   password: string,
 ) {
-  if (password.length < 8) {
-    throw new ErrorNegocio(
-      "password must be longer than or equal to 8 characters",
-    );
+  const passwordInvalida = mensajePasswordInvalida(password);
+  if (passwordInvalida) {
+    throw new ErrorNegocio(passwordInvalida);
   }
 
   const usuario = await prisma.usuario.findUnique({
@@ -276,7 +293,10 @@ export async function cambiarPasswordUsuario(
 
   return prisma.usuario.update({
     where: { id },
-    data: { passwordHash: await bcrypt.hash(password, 10) },
+    data: {
+      passwordHash: await bcrypt.hash(password, 10),
+      tokenVersion: { increment: 1 },
+    },
     select: {
       id: true,
       nombre: true,

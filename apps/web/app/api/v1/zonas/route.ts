@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    return NextResponse.json(await listarZonasActivas());
+    return NextResponse.json(await listarZonasActivas(sesion));
   } catch (error) {
     return jsonError(error);
   }

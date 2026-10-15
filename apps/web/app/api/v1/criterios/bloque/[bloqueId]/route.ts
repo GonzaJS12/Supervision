@@ -17,6 +17,7 @@ export async function GET(
   try {
     const criterios = await listarCriteriosPorBloque(
       parseIdParam(bloqueId),
+      { soloActivos: sesion.rol !== "ADMIN" },
     );
     return NextResponse.json(criterios);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requerirAdmin } from "@/lib/requerir";
 import { parseIdParam, jsonError, jsonValidacion, jsonSiHayExtras } from "@/lib/errores";
+import { mensajePasswordInvalida } from "@supervision/domain";
 import { cambiarPasswordUsuario } from "@/lib/server/usuarios";
 
 export async function PATCH(
@@ -19,7 +20,7 @@ export async function PATCH(
     cuerpo = (await request.json()) as { password?: string };
   } catch {
     return jsonValidacion(
-      "password must be longer than or equal to 8 characters",
+      "password must be longer than or equal to 10 characters",
     );
   }
 
@@ -32,10 +33,9 @@ export async function PATCH(
     return jsonValidacion("password must be a string");
   }
 
-  if (cuerpo.password.length < 8) {
-    return jsonValidacion(
-      "password must be longer than or equal to 8 characters",
-    );
+  const passwordInvalida = mensajePasswordInvalida(cuerpo.password);
+  if (passwordInvalida) {
+    return jsonValidacion(passwordInvalida);
   }
 
   try {

@@ -64,14 +64,41 @@ export function formatearPromedio(valor: unknown) {
   return Number.isNaN(numero) ? "—" : numero.toFixed(2);
 }
 
-export function formatearFecha(valor: Date | string) {
-  const fecha = typeof valor === "string" ? new Date(valor) : valor;
+const ZONA_AR = "America/Argentina/Buenos_Aires";
 
-  if (Number.isNaN(fecha.getTime())) {
+function comoFecha(valor: Date | string) {
+  const fecha = typeof valor === "string" ? new Date(valor) : valor;
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
+function parte(partes: Intl.DateTimeFormatPart[], tipo: Intl.DateTimeFormatPartTypes) {
+  return partes.find((item) => item.type === tipo)?.value ?? "";
+}
+
+export function hoyEnDdMmAaaa(valor: Date | string = new Date()) {
+  const fecha = comoFecha(valor);
+  if (!fecha) {
+    return "";
+  }
+
+  const partes = new Intl.DateTimeFormat("es-AR", {
+    timeZone: ZONA_AR,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(fecha);
+
+  return `${parte(partes, "day")}/${parte(partes, "month")}/${parte(partes, "year")}`;
+}
+
+export function formatearFecha(valor: Date | string) {
+  const fecha = comoFecha(valor);
+  if (!fecha) {
     return "—";
   }
 
   return new Intl.DateTimeFormat("es-AR", {
+    timeZone: ZONA_AR,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -79,17 +106,18 @@ export function formatearFecha(valor: Date | string) {
 }
 
 export function formatearFechaHora(valor: Date | string) {
-  const fecha = typeof valor === "string" ? new Date(valor) : valor;
-
-  if (Number.isNaN(fecha.getTime())) {
+  const fecha = comoFecha(valor);
+  if (!fecha) {
     return "—";
   }
 
   return new Intl.DateTimeFormat("es-AR", {
+    timeZone: ZONA_AR,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(fecha);
 }

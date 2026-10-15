@@ -3,16 +3,35 @@
     "name": "Supervisión APS",
     "slug": "supervision-aps",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "supervisionaps",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
     "android": {
-      "usesCleartextTraffic": true
+      "package": "ar.supervision.aps",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "usesCleartextTraffic": false
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ce901c6a-0d58-4de6-99d0-860a776c4ae3"
+      }
+    },
+    "owner": "gonzajs12"
   }
 }

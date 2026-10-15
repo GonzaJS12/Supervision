@@ -4,7 +4,10 @@ import {
   calcularClasificacion,
   calcularPromedio,
   hayCriteriosDuplicados,
+  LIMITE_EXPORTACION,
   LIMITE_POR_PAGINA,
+  MAX_TEXTO_OBSERVACION,
+  paginaLista,
   type Clasificacion,
   type DecisionGestion,
 } from "@supervision/domain";
@@ -116,8 +119,13 @@ function decimalComoNest(valor: unknown) {
 function serializarSupervision<T extends { promedio: unknown }>(
   supervision: T,
 ) {
+  const resto = { ...supervision } as T & {
+    claveIdempotencia?: string | null;
+  };
+  delete resto.claveIdempotencia;
+
   return {
-    ...supervision,
+    ...resto,
     promedio: decimalComoNest(supervision.promedio),
   };
 }
@@ -135,6 +143,7 @@ export type DatosCrearSupervision = {
   situacionesCriticas?: string | null;
   recomendaciones?: string | null;
   evaluaciones: Array<{ criterioId: number; puntuacion: number }>;
+  claveIdempotencia?: string | null;
 };
 
 export async function crearSupervision(
@@ -288,6 +297,24 @@ export async function crearSupervision(
     throw new ErrorNegocio("La decisión de gestión no es válida");
   }
 
+  const camposTexto = [
+    dto.fortalezas,
+    dto.oportunidadesMejora,
+    dto.situacionesCriticas,
+    dto.recomendaciones,
+  ];
+
+  if (
+    camposTexto.some(
+      (valor) =>
+        typeof valor === "string" && valor.length > MAX_TEXTO_OBSERVACION,
+    )
+  ) {
+    throw new ErrorNegocio(
+      `Las observaciones no pueden superar ${MAX_TEXTO_OBSERVACION} caracteres`,
+    );
+  }
+
   const criterios = await prisma.criterioEvaluacion.findMany({
     where: { id: { in: criterioIds }, activo: true },
     orderBy: [{ bloque: { orden: "asc" } }, { orden: "asc" }],
@@ -335,6 +362,7 @@ export async function crearSupervision(
       oportunidadesMejora: dto.oportunidadesMejora,
       situacionesCriticas: dto.situacionesCriticas,
       recomendaciones: dto.recomendaciones,
+      claveIdempotencia: dto.claveIdempotencia ?? null,
       evaluaciones: {
         create: dto.evaluaciones.map((evaluacion) => {
           const criterio = criterios.find(
@@ -424,10 +452,7 @@ export async function listarSupervisiones(
     clasificacion?: string;
   },
 ) {
-  const pagina =
-    Number.isFinite(params.page) && (params.page ?? 0) > 0
-      ? Math.floor(params.page as number)
-      : 1;
+  const pagina = paginaLista(params.page);
   const limite =
     Number.isFinite(params.limit) && (params.limit ?? 0) > 0
       ? Math.min(Math.floor(params.limit as number), LIMITE_POR_PAGINA)
@@ -560,6 +585,7 @@ export async function listarParaExportacion(sesion: SesionUsuario) {
       sesion.rol === "SUPERVISOR"
         ? { supervisorId: sesion.id }
         : undefined,
+    take: LIMITE_EXPORTACION,
     orderBy: [{ fecha: "desc" }, { id: "desc" }],
     include: includeListado,
   });

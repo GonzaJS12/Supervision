@@ -9,12 +9,26 @@ const raiz = path.resolve(
 );
 
 config({ path: path.join(raiz, ".env") });
+config({ path: path.join(raiz, "apps/web/.env"), override: true });
 
 const placeholder =
   "postgresql://build:build@127.0.0.1:5432/build?schema=public";
 
 const databaseUrl =
   process.env.DATABASE_URL?.trim() || placeholder;
+
+function hostDe(url) {
+  try {
+    return new URL(url.replace(/^postgres(?:ql)?:/, "https:")).hostname;
+  } catch {
+    return "";
+  }
+}
+
+const directDesdeEnv = process.env.DIRECT_URL?.trim();
+const hostDb = hostDe(databaseUrl);
+const usarDirectoLocal =
+  hostDb === "localhost" || hostDb === "127.0.0.1";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -25,7 +39,8 @@ export default defineConfig({
   engine: "classic",
   datasource: {
     url: databaseUrl,
-    directUrl:
-      process.env.DIRECT_URL?.trim() || databaseUrl,
+    directUrl: usarDirectoLocal
+      ? databaseUrl
+      : directDesdeEnv || databaseUrl,
   },
 });

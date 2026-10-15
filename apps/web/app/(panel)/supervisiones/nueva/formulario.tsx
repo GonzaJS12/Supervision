@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import type { DecisionGestion } from "@supervision/domain";
 import { calcularClasificacion } from "@supervision/domain";
 import { extraerMensajeApi } from "@/lib/mensaje-api";
-import { etiquetasClasificacion, etiquetasGestion, ayudasGestion, escalaPuntuacion } from "@/lib/etiquetas";
+import {
+  etiquetasClasificacion,
+  etiquetasGestion,
+  ayudasGestion,
+  escalaPuntuacion,
+  hoyEnDdMmAaaa,
+} from "@/lib/etiquetas";
 
 type Area = { id: number; nombre: string };
 type Ronda = { id: number; nombre: string };
@@ -40,13 +46,6 @@ const decisiones: DecisionGestion[] = [
   "CAPACITACION",
   "SUPERVISION_INTENSIVA",
 ];
-
-function hoyEnDdMmAaaa() {
-  const hoy = new Date();
-  const dia = String(hoy.getDate()).padStart(2, "0");
-  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
-  return `${dia}/${mes}/${hoy.getFullYear()}`;
-}
 
 function enmascararFecha(valor: string) {
   const digitos = valor.replace(/\D/g, "").slice(0, 8);

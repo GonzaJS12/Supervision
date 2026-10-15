@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
-  COOKIE_SESION,
+  atributosCookieSesion,
   firmarSesion,
 } from "@/lib/auth";
 import { normalizarEmail } from "@/lib/email";
@@ -18,6 +18,9 @@ import {
   loginBloqueado,
   registrarLoginFallido,
 } from "@/lib/login-rate-limit";
+
+const HASH_CEBO =
+  "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 export async function POST(request: Request) {
   let cuerpo: { email?: string; password?: string };
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
   }
 
   const ip = ipDesdeRequest(request);
-  if (loginBloqueado(ip, email)) {
+  if (await loginBloqueado(ip, email)) {
     return jsonError(new ErrorNegocio("Too Many Requests", 429));
   }
 
@@ -76,28 +79,23 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!usuario) {
-      registrarLoginFallido(ip, email);
+    const valida = await bcrypt.compare(
+      password,
+      usuario?.passwordHash ?? HASH_CEBO,
+    );
+
+    if (!usuario || !valida || !usuario.activo) {
+      await registrarLoginFallido(ip, email);
       return jsonError(new ErrorNegocio("Credenciales inválidas", 401));
     }
 
-    const valida = await bcrypt.compare(password, usuario.passwordHash);
-
-    if (!valida) {
-      registrarLoginFallido(ip, email);
-      return jsonError(new ErrorNegocio("Credenciales inválidas", 401));
-    }
-
-    if (!usuario.activo) {
-      return jsonError(new ErrorNegocio("Usuario inactivo", 401));
-    }
-
-    limpiarLoginFallidos(ip, email);
+    await limpiarLoginFallidos(ip, email);
 
     const token = await firmarSesion({
       id: usuario.id,
       email: usuario.email,
       rol: usuario.rol,
+      tokenVersion: usuario.tokenVersion,
     });
 
     const respuesta = NextResponse.json({
@@ -114,15 +112,7 @@ export async function POST(request: Request) {
       },
     });
 
-    respuesta.cookies.set({
-      name: COOKIE_SESION,
-      value: token,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
+    respuesta.cookies.set(atributosCookieSesion(token, 60 * 60 * 8));
 
     return respuesta;
   } catch (error) {

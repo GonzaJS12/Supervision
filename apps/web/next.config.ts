@@ -35,15 +35,7 @@ function origenesLan() {
     })
     .map((item) => item.address);
 
-  return [
-    "localhost",
-    "127.0.0.1",
-    "10.0.2.2",
-    "26.40.7.116",
-    "172.16.9.195",
-    ...ips,
-    ...extras,
-  ];
+  return ["localhost", "127.0.0.1", "10.0.2.2", ...ips, ...extras];
 }
 
 const nextConfig: NextConfig = {

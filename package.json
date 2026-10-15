@@ -12,6 +12,7 @@
     "start": "npm run start -w @supervision/web",
     "dev:web": "npm run dev -w @supervision/web",
     "dev:mobile": "npm run start -w @supervision/mobile",
+    "build:apk": "npx eas-cli build -p android --profile preview",
     "db:generate": "npm run generate -w @supervision/database",
     "db:migrate": "npm run migrate -w @supervision/database",
     "db:migrate:deploy": "npm run migrate:deploy -w @supervision/database",

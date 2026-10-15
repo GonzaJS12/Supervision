@@ -39,8 +39,14 @@ export function FormularioUsuario({ areas }: { areas: Area[] }) {
       return;
     }
 
-    if (password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
+    if (
+      password.length < 10 ||
+      !/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(password) ||
+      !/\d/.test(password)
+    ) {
+      setError(
+        "La contraseña debe tener al menos 10 caracteres, una letra y un número.",
+      );
       setCargando(false);
       return;
     }
@@ -181,15 +187,15 @@ export function FormularioUsuario({ areas }: { areas: Area[] }) {
       </p>
       <p className="text-xs text-slate-500">
         Defina la contraseña inicial que utilizará el usuario. La contraseña
-        debe contener al menos 8 caracteres. Ambos campos deben coincidir
-        antes de crear la cuenta.
+        debe tener al menos 10 caracteres, una letra y un número. Ambos
+        campos deben coincidir antes de crear la cuenta.
       </p>
       <CampoPassword
         label="Contraseña"
         name="password"
         required
-        minLength={8}
-        placeholder="Mínimo 8 caracteres"
+        minLength={10}
+        placeholder="Mínimo 10 caracteres, letra y número"
         autoComplete="new-password"
         className="mt-1 w-full rounded-lg border px-3 py-2 pr-24"
       />
@@ -197,7 +203,7 @@ export function FormularioUsuario({ areas }: { areas: Area[] }) {
         label="Confirmar contraseña"
         name="confirmarPassword"
         required
-        minLength={8}
+        minLength={10}
         placeholder="Repita la contraseña"
         autoComplete="new-password"
         className="mt-1 w-full rounded-lg border px-3 py-2 pr-24"

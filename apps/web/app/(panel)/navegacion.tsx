@@ -100,7 +100,7 @@ export function NavegacionPanel({
   sesion: SesionNav;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [abierto, setAbierto] = useState(false);
   const esAdmin = sesion.rol === "ADMIN";
   const iniciales =

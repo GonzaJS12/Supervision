@@ -46,6 +46,7 @@ export function CampoPassword({
           required={required}
           minLength={minLength}
           disabled={disabled}
+          suppressHydrationWarning
           className={`${ds.input} mt-0 pr-24 ${className}`}
         />
         <button

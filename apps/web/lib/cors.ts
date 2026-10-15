@@ -60,20 +60,16 @@ export function cabecerasCors(request: NextRequest) {
     "Access-Control-Allow-Methods": METODOS,
   };
 
-  if (bearer) {
-    headers["Access-Control-Allow-Origin"] =
-      origin && origin !== "null" ? origin : "*";
-    if (origin && origin !== "null") {
-      headers.Vary = "Origin";
-    }
+  const permitido = origenPermitido(origin);
+  if (!permitido) {
     return headers;
   }
 
-  const permitido = origenPermitido(origin);
-  if (permitido) {
-    headers["Access-Control-Allow-Origin"] = permitido;
+  headers["Access-Control-Allow-Origin"] = permitido;
+  headers.Vary = "Origin";
+
+  if (!bearer) {
     headers["Access-Control-Allow-Credentials"] = "true";
-    headers.Vary = "Origin";
   }
 
   return headers;

@@ -200,7 +200,28 @@ export async function obtenerTerritorio(
   return { sectores, agentes };
 }
 
-export async function listarZonasActivas() {
+export async function listarZonasActivas(sesion: SesionUsuario) {
+  if (sesion.rol === "SUPERVISOR") {
+    const areaId = await areaDelSupervisor(sesion);
+    if (areaId == null) {
+      return [];
+    }
+
+    const area = await prisma.areaOperativa.findUnique({
+      where: { id: areaId },
+      select: { zonaId: true },
+    });
+
+    if (!area?.zonaId) {
+      return [];
+    }
+
+    return prisma.zona.findMany({
+      where: { activo: true, id: area.zonaId },
+      orderBy: { nombre: "asc" },
+    });
+  }
+
   return prisma.zona.findMany({
     where: { activo: true },
     orderBy: { nombre: "asc" },

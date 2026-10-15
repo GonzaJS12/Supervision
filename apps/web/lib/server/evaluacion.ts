@@ -1,11 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { ErrorNegocio } from "@/lib/errores";
 
-export async function listarBloques() {
+export async function listarBloques(opciones?: { soloActivos?: boolean }) {
+  const soloActivos = opciones?.soloActivos ?? false;
+
   return prisma.bloqueEvaluacion.findMany({
+    where: soloActivos ? { activo: true } : undefined,
     orderBy: { orden: "asc" },
     include: {
-      criterios: { orderBy: { orden: "asc" } },
+      criterios: {
+        where: soloActivos ? { activo: true } : undefined,
+        orderBy: { orden: "asc" },
+      },
     },
   });
 }
@@ -25,16 +31,27 @@ export async function buscarBloque(id: number) {
   return bloque;
 }
 
-export async function listarCriterios() {
+export async function listarCriterios(opciones?: { soloActivos?: boolean }) {
+  const soloActivos = opciones?.soloActivos ?? false;
+
   return prisma.criterioEvaluacion.findMany({
+    where: soloActivos ? { activo: true } : undefined,
     orderBy: [{ bloque: { orden: "asc" } }, { orden: "asc" }],
     include: { bloque: true },
   });
 }
 
-export async function listarCriteriosPorBloque(bloqueId: number) {
+export async function listarCriteriosPorBloque(
+  bloqueId: number,
+  opciones?: { soloActivos?: boolean },
+) {
+  const soloActivos = opciones?.soloActivos ?? false;
+
   return prisma.criterioEvaluacion.findMany({
-    where: { bloqueId },
+    where: {
+      bloqueId,
+      ...(soloActivos ? { activo: true } : {}),
+    },
     orderBy: { orden: "asc" },
   });
 }

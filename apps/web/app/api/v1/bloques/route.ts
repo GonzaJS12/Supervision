@@ -10,7 +10,9 @@ export async function GET() {
   }
 
   try {
-    return NextResponse.json(await listarBloques());
+    return NextResponse.json(
+      await listarBloques({ soloActivos: sesion.rol !== "ADMIN" }),
+    );
   } catch (error) {
     return jsonError(error);
   }
