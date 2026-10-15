@@ -2,6 +2,12 @@ import { Platform } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import {
+  borrarReportePdf,
+  listarReportesPdf,
+  registrarReportePdf,
+  type ReportePdfLocal,
+} from "./db/consultas";
+import {
   etiquetasClasificacion,
   etiquetasGestion,
   escalaPuntuacion,
@@ -187,9 +193,13 @@ export function htmlDetalleSupervision(supervision: SupervisionPdfDetalle) {
   );
 }
 
-export async function compartirPdf(html: string, nombreArchivo: string) {
+function nombrePdfSeguro(nombreArchivo: string) {
+  return nombreArchivo.replace(/[^\w.-]+/g, "-");
+}
+
+async function generarArchivoPdf(html: string, nombreArchivo: string) {
   const FileSystem = await import("expo-file-system/legacy");
-  const seguro = nombreArchivo.replace(/[^\w.-]+/g, "-");
+  const seguro = nombrePdfSeguro(nombreArchivo);
   const destino = `${FileSystem.cacheDirectory}${seguro}-${Date.now()}.pdf`;
 
   const generado = await Print.printToFileAsync({
@@ -205,6 +215,82 @@ export async function compartirPdf(html: string, nombreArchivo: string) {
     await FileSystem.copyAsync({ from: generado.uri, to: destino });
   }
 
+  return { FileSystem, destino, seguro };
+}
+
+export async function guardarPdfEnDispositivo(
+  html: string,
+  nombreArchivo: string,
+  titulo = "Reporte de supervisiones",
+) {
+  const { FileSystem, destino, seguro } = await generarArchivoPdf(
+    html,
+    nombreArchivo,
+  );
+  const raiz = FileSystem.documentDirectory;
+  if (!raiz) {
+    throw new Error("Este dispositivo no permite guardar archivos locales.");
+  }
+
+  const carpeta = `${raiz}reportes/`;
+  const info = await FileSystem.getInfoAsync(carpeta);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(carpeta, { intermediates: true });
+  }
+
+  const nombre = `${seguro}-${Date.now()}.pdf`;
+  const permanente = `${carpeta}${nombre}`;
+  await FileSystem.copyAsync({ from: destino, to: permanente });
+  await registrarReportePdf({
+    titulo,
+    nombreArchivo: nombre,
+    uri: permanente,
+    createdAt: new Date().toISOString(),
+  });
+  return { nombre, uri: permanente };
+}
+
+export async function listarReportesGuardados(): Promise<ReportePdfLocal[]> {
+  const FileSystem = await import("expo-file-system/legacy");
+  const registrados = await listarReportesPdf();
+  const vigentes: ReportePdfLocal[] = [];
+
+  for (const item of registrados) {
+    const info = await FileSystem.getInfoAsync(item.uri);
+    if (info.exists) {
+      vigentes.push(item);
+    } else {
+      await borrarReportePdf(item.id);
+    }
+  }
+
+  return vigentes;
+}
+
+export async function abrirPdfLocal(uri: string) {
+  const disponible = await Sharing.isAvailableAsync();
+  if (disponible && Platform.OS !== "web") {
+    await Sharing.shareAsync(uri, {
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
+      dialogTitle: "Abrir reporte",
+    });
+    return;
+  }
+  await Print.printAsync({ uri });
+}
+
+export async function eliminarReporteGuardado(id: number, uri: string) {
+  const FileSystem = await import("expo-file-system/legacy");
+  const info = await FileSystem.getInfoAsync(uri);
+  if (info.exists) {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  }
+  await borrarReportePdf(id);
+}
+
+export async function compartirPdf(html: string, nombreArchivo: string) {
+  const { destino } = await generarArchivoPdf(html, nombreArchivo);
   const disponible = await Sharing.isAvailableAsync();
 
   try {

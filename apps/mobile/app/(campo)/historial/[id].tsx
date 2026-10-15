@@ -12,6 +12,7 @@ import {
 import { formatearFecha } from "../../../src/fechas";
 import {
   compartirPdf,
+  guardarPdfEnDispositivo,
   htmlDetalleSupervision,
 } from "../../../src/pdf";
 
@@ -42,8 +43,10 @@ export default function DetalleHistorialScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [error, setError] = useState("");
   const [errorPdf, setErrorPdf] = useState("");
+  const [mensajePdf, setMensajePdf] = useState("");
   const [supervision, setSupervision] = useState<Detalle | null>(null);
   const [exportando, setExportando] = useState(false);
+  const [guardandoLocal, setGuardandoLocal] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -96,6 +99,7 @@ export default function DetalleHistorialScreen() {
           void (async () => {
             setExportando(true);
             setErrorPdf("");
+            setMensajePdf("");
             try {
               await compartirPdf(
                 htmlDetalleSupervision(supervision),
@@ -112,19 +116,61 @@ export default function DetalleHistorialScreen() {
             }
           })();
         }}
-        disabled={exportando}
+        disabled={exportando || guardandoLocal}
         style={{
           backgroundColor: "#0f172a",
           padding: 12,
           borderRadius: 8,
+          opacity: exportando || guardandoLocal ? 0.6 : 1,
         }}
       >
         <Text style={{ color: "white", textAlign: "center" }}>
           {exportando ? "Generando PDF..." : "Exportar PDF"}
         </Text>
       </Pressable>
+      <Pressable
+        onPress={() => {
+          void (async () => {
+            setGuardandoLocal(true);
+            setErrorPdf("");
+            setMensajePdf("");
+            try {
+              await guardarPdfEnDispositivo(
+                htmlDetalleSupervision(supervision),
+                "supervision",
+                `Supervisión de ${supervision.agenteSanitario.apellido}, ${supervision.agenteSanitario.nombre}`,
+              );
+              router.push("/(campo)/reportes");
+            } catch (err) {
+              setErrorPdf(
+                err instanceof Error
+                  ? err.message
+                  : "No se pudo guardar el PDF en el dispositivo.",
+              );
+            } finally {
+              setGuardandoLocal(false);
+            }
+          })();
+        }}
+        disabled={exportando || guardandoLocal}
+        style={{
+          backgroundColor: "white",
+          padding: 12,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: "#cbd5e1",
+          opacity: exportando || guardandoLocal ? 0.6 : 1,
+        }}
+      >
+        <Text style={{ textAlign: "center", fontWeight: "600" }}>
+          {guardandoLocal ? "Guardando PDF..." : "Guardar en el dispositivo"}
+        </Text>
+      </Pressable>
       {errorPdf ? (
         <Text style={{ color: "#b91c1c" }}>{errorPdf}</Text>
+      ) : null}
+      {mensajePdf ? (
+        <Text style={{ color: "#059669" }}>{mensajePdf}</Text>
       ) : null}
       <Text style={{ fontSize: 20, fontWeight: "700" }}>
         Detalle de supervisión

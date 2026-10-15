@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -99,6 +99,36 @@ const decisiones: DecisionGestion[] = [
   "SUPERVISION_INTENSIVA",
 ];
 
+const estilosDecision: Record<
+  DecisionGestion,
+  { fondo: string; borde: string; texto: string; activo: string }
+> = {
+  NO_REQUIERE: {
+    fondo: "#f0fdf4",
+    borde: "#bbf7d0",
+    texto: "#166534",
+    activo: "#86efac",
+  },
+  SEGUIMIENTO: {
+    fondo: "#fffbeb",
+    borde: "#fde68a",
+    texto: "#92400e",
+    activo: "#fcd34d",
+  },
+  CAPACITACION: {
+    fondo: "#eff6ff",
+    borde: "#bfdbfe",
+    texto: "#1e40af",
+    activo: "#93c5fd",
+  },
+  SUPERVISION_INTENSIVA: {
+    fondo: "#fef2f2",
+    borde: "#fecaca",
+    texto: "#991b1b",
+    activo: "#fca5a5",
+  },
+};
+
 export default function NuevaLocalScreen() {
   const { agenteId: agenteParam } = useLocalSearchParams<{
     agenteId?: string;
@@ -116,14 +146,11 @@ export default function NuevaLocalScreen() {
     Awaited<ReturnType<typeof listarBloquesLocales>>
   >([]);
   const [sectorFiltro, setSectorFiltro] = useState<number | null>(null);
-  const [agenteId, setAgenteId] = useState<number | null>(
-    agenteParam ? Number(agenteParam) : null,
-  );
+  const [agenteId, setAgenteId] = useState<number | null>(null);
   const [rondaId, setRondaId] = useState<number | null>(null);
   const [fecha, setFecha] = useState(hoyEnDdMmAaaa());
   const [familiaNumero, setFamiliaNumero] = useState("");
-  const [decision, setDecision] =
-    useState<DecisionGestion>("NO_REQUIERE");
+  const [decision, setDecision] = useState<DecisionGestion | null>(null);
   const [puntuaciones, setPuntuaciones] = useState<Record<number, number>>(
     {},
   );
@@ -133,9 +160,32 @@ export default function NuevaLocalScreen() {
   const [recomendaciones, setRecomendaciones] = useState("");
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [formEpoch, setFormEpoch] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const resetearFormulario = useCallback(() => {
+    setSectorFiltro(null);
+    setAgenteId(null);
+    setRondaId(null);
+    setFecha(hoyEnDdMmAaaa());
+    setFamiliaNumero("");
+    setDecision(null);
+    setPuntuaciones({});
+    setFortalezas("");
+    setOportunidadesMejora("");
+    setSituacionesCriticas("");
+    setRecomendaciones("");
+    setError("");
+    setGuardando(false);
+    setFormEpoch((actual) => actual + 1);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      let activo = true;
+      resetearFormulario();
+
       void (async () => {
         const [a, r, b, s] = await Promise.all([
           listarAgentesLocales(),
@@ -143,6 +193,9 @@ export default function NuevaLocalScreen() {
           listarBloquesLocales(),
           listarSectoresLocales(),
         ]);
+        if (!activo) {
+          return;
+        }
         setAgentes(a);
         setRondas(r);
         setBloques(b);
@@ -155,7 +208,12 @@ export default function NuevaLocalScreen() {
           }
         }
       })();
-    }, [agenteParam]),
+
+      return () => {
+        activo = false;
+        resetearFormulario();
+      };
+    }, [agenteParam, resetearFormulario]),
   );
 
   const criterios = bloques.flatMap((bloque) => bloque.criterios);
@@ -208,6 +266,11 @@ export default function NuevaLocalScreen() {
       return;
     }
 
+    if (!decision) {
+      setError("Debe indicar si requiere intervención.");
+      return;
+    }
+
     setGuardando(true);
     const localId = `local-${Date.now()}`;
 
@@ -248,7 +311,10 @@ export default function NuevaLocalScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView
+      ref={scrollRef}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
       {error ? <Text style={{ color: "#b91c1c" }}>{error}</Text> : null}
 
       <Text style={{ fontWeight: "600" }}>Progreso de evaluación</Text>
@@ -274,6 +340,7 @@ export default function NuevaLocalScreen() {
       </Text>
 
       <Desplegable
+        key={`sector-${formEpoch}`}
         titulo="Sector"
         placeholder="Todos los sectores"
         valor={
@@ -314,6 +381,7 @@ export default function NuevaLocalScreen() {
       />
 
       <Desplegable
+        key={`agente-${formEpoch}`}
         titulo="Agente sanitario"
         placeholder={
           agentesFiltrados.length === 0
@@ -338,6 +406,7 @@ export default function NuevaLocalScreen() {
       />
 
       <Desplegable
+        key={`ronda-${formEpoch}`}
         titulo="Ronda"
         placeholder="Seleccione una ronda"
         valor={rondaId == null ? "" : String(rondaId)}
@@ -468,14 +537,42 @@ export default function NuevaLocalScreen() {
         observaciones.
       </Text>
       <Text style={{ fontWeight: "600" }}>¿Requiere intervención?</Text>
-      {decisiones.map((item) => (
-        <Pressable key={item} onPress={() => setDecision(item)}>
-          <Text style={{ fontWeight: decision === item ? "700" : "400" }}>
-            {etiquetasGestion[item]}
-          </Text>
-        </Pressable>
-      ))}
-      <Text>{ayudasGestion[decision]}</Text>
+      <Text style={{ color: "#64748b" }}>
+        Debe elegir una opción antes de guardar.
+      </Text>
+      {decisiones.map((item) => {
+        const estilo = estilosDecision[item];
+        const elegido = decision === item;
+        return (
+          <Pressable
+            key={item}
+            onPress={() => setDecision(item)}
+            style={{
+              minHeight: 48,
+              borderRadius: 10,
+              borderWidth: elegido ? 2 : 1,
+              borderColor: elegido ? estilo.activo : estilo.borde,
+              backgroundColor: estilo.fondo,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontWeight: elegido ? "700" : "500",
+                fontSize: 15,
+                color: estilo.texto,
+              }}
+            >
+              {etiquetasGestion[item]}
+            </Text>
+          </Pressable>
+        );
+      })}
+      <Text style={{ color: "#64748b" }}>
+        {decision ? ayudasGestion[decision] : "Todavía no eligió una opción."}
+      </Text>
 
       <Text style={{ fontWeight: "600" }}>Resultado general</Text>
       <Text>
@@ -492,7 +589,6 @@ export default function NuevaLocalScreen() {
       ) : (
         <>
           <Text>Promedio actual {promedio.toFixed(2)}</Text>
-          <Text>sobre 5.00</Text>
           <Text>
             Clasificación{" "}
             {etiquetasClasificacion[calcularClasificacion(promedio)]}
@@ -515,13 +611,17 @@ export default function NuevaLocalScreen() {
       </Pressable>
       <Pressable
         onPress={() => void guardar()}
-        disabled={guardando || valores.length !== criterios.length}
+        disabled={
+          guardando || valores.length !== criterios.length || !decision
+        }
         style={{
           backgroundColor: "#0f172a",
           padding: 14,
           borderRadius: 8,
           opacity:
-            guardando || valores.length !== criterios.length ? 0.6 : 1,
+            guardando || valores.length !== criterios.length || !decision
+              ? 0.6
+              : 1,
         }}
       >
         <Text style={{ color: "white", textAlign: "center" }}>

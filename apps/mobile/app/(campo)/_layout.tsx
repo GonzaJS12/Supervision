@@ -32,6 +32,10 @@ export default function CampoLayout() {
         name="historial/[id]"
         options={{ href: null, title: "Detalle de supervisión" }}
       />
+      <Tabs.Screen
+        name="reportes"
+        options={{ href: null, title: "Mis reportes" }}
+      />
     </Tabs>
   );
 }

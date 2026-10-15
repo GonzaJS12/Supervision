@@ -6,7 +6,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Link, useFocusEffect } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 import type { Clasificacion } from "@supervision/domain";
 import { clienteApi } from "../../src/api";
 import { leerUsuario } from "../../src/auth/storage";
@@ -18,6 +18,7 @@ import {
 } from "../../src/fechas";
 import {
   compartirPdf,
+  guardarPdfEnDispositivo,
   htmlListadoSupervisiones,
   type SupervisionPdfListado,
 } from "../../src/pdf";
@@ -59,8 +60,10 @@ export default function HistorialScreen() {
     clasificacion: "",
   });
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
   const [exportando, setExportando] = useState(false);
+  const [guardandoLocal, setGuardandoLocal] = useState(false);
 
   const cargar = useCallback(
     async (pagina: number) => {
@@ -111,32 +114,65 @@ export default function HistorialScreen() {
     }, [cargar]),
   );
 
+  async function htmlReporte() {
+    const usuario = await leerUsuario();
+    const datos = (await clienteApi().exportacion()) as SupervisionPdfListado[];
+    if (!Array.isArray(datos) || datos.length === 0) {
+      return null;
+    }
+    return htmlListadoSupervisiones({
+      titulo: "Reporte de mis supervisiones",
+      supervisor: usuario
+        ? `${usuario.nombre} ${usuario.apellido}`
+        : undefined,
+      supervisiones: datos,
+    });
+  }
+
   async function exportarPdf() {
     setError("");
+    setMensaje("");
     setExportando(true);
     try {
-      const usuario = await leerUsuario();
-      const datos = (await clienteApi().exportacion()) as SupervisionPdfListado[];
-      if (!Array.isArray(datos) || datos.length === 0) {
+      const html = await htmlReporte();
+      if (!html) {
         setError("No tiene supervisiones para exportar.");
         return;
       }
-      await compartirPdf(
-        htmlListadoSupervisiones({
-          titulo: "Reporte de mis supervisiones",
-          supervisor: usuario
-            ? `${usuario.nombre} ${usuario.apellido}`
-            : undefined,
-          supervisiones: datos,
-        }),
-        "mis-supervisiones",
-      );
+      await compartirPdf(html, "mis-supervisiones");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "No se pudo generar el PDF.",
       );
     } finally {
       setExportando(false);
+    }
+  }
+
+  async function guardarPdfLocal() {
+    setError("");
+    setMensaje("");
+    setGuardandoLocal(true);
+    try {
+      const html = await htmlReporte();
+      if (!html) {
+        setError("No tiene supervisiones para guardar.");
+        return;
+      }
+      await guardarPdfEnDispositivo(
+        html,
+        "mis-supervisiones",
+        "Reporte de mis supervisiones",
+      );
+      router.push("/(campo)/reportes");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo guardar el PDF en el dispositivo.",
+      );
+    } finally {
+      setGuardandoLocal(false);
     }
   }
 
@@ -195,19 +231,52 @@ export default function HistorialScreen() {
           </Pressable>
           <Pressable
             onPress={() => void exportarPdf()}
-            disabled={exportando}
+            disabled={exportando || guardandoLocal}
             style={{
               backgroundColor: "#0f172a",
               padding: 12,
               borderRadius: 8,
+              opacity: exportando || guardandoLocal ? 0.6 : 1,
             }}
           >
             <Text style={{ color: "white", textAlign: "center" }}>
               {exportando ? "Generando PDF..." : "Exportar reporte PDF"}
             </Text>
           </Pressable>
+          <Pressable
+            onPress={() => void guardarPdfLocal()}
+            disabled={exportando || guardandoLocal}
+            style={{
+              backgroundColor: "white",
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#cbd5e1",
+              opacity: exportando || guardandoLocal ? 0.6 : 1,
+            }}
+          >
+            <Text style={{ textAlign: "center", fontWeight: "600" }}>
+              {guardandoLocal ? "Guardando PDF..." : "Guardar en el dispositivo"}
+            </Text>
+          </Pressable>
+          <Link href="/(campo)/reportes" asChild>
+            <Pressable>
+              <Text
+                style={{
+                  color: "#2563eb",
+                  textAlign: "center",
+                  fontWeight: "600",
+                }}
+              >
+                Ver reportes guardados
+              </Text>
+            </Pressable>
+          </Link>
           {error ? (
             <Text style={{ color: "#b91c1c" }}>{error}</Text>
+          ) : null}
+          {mensaje ? (
+            <Text style={{ color: "#059669" }}>{mensaje}</Text>
           ) : null}
           {cargando ? (
             <Text style={{ color: "#64748b" }}>Cargando...</Text>

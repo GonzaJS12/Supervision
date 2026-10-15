@@ -138,6 +138,51 @@ export async function listarSupervisionesPorAgenteLocal(agenteId: number) {
   }));
 }
 
+export type ReportePdfLocal = {
+  id: number;
+  titulo: string;
+  nombreArchivo: string;
+  uri: string;
+  createdAt: string;
+};
+
+export async function registrarReportePdf(item: {
+  titulo: string;
+  nombreArchivo: string;
+  uri: string;
+  createdAt: string;
+}) {
+  const db = await obtenerDb();
+  await db.runAsync(
+    "INSERT INTO reportes_pdf (titulo, nombre_archivo, uri, created_at) VALUES (?, ?, ?, ?)",
+    [item.titulo, item.nombreArchivo, item.uri, item.createdAt],
+  );
+}
+
+export async function listarReportesPdf() {
+  const db = await obtenerDb();
+  const filas = await db.getAllAsync<{
+    id: number;
+    titulo: string;
+    nombre_archivo: string;
+    uri: string;
+    created_at: string;
+  }>("SELECT * FROM reportes_pdf ORDER BY created_at DESC, id DESC");
+
+  return filas.map((fila) => ({
+    id: fila.id,
+    titulo: fila.titulo,
+    nombreArchivo: fila.nombre_archivo,
+    uri: fila.uri,
+    createdAt: fila.created_at,
+  }));
+}
+
+export async function borrarReportePdf(id: number) {
+  const db = await obtenerDb();
+  await db.runAsync("DELETE FROM reportes_pdf WHERE id = ?", [id]);
+}
+
 export async function listarSupervisionesRemotas() {
   const db = await obtenerDb();
   const filas = await db.getAllAsync<{

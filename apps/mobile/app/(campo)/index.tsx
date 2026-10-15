@@ -19,6 +19,7 @@ import {
 } from "../../src/tema";
 import {
   compartirPdf,
+  guardarPdfEnDispositivo,
   htmlListadoSupervisiones,
   type SupervisionPdfListado,
 } from "../../src/pdf";
@@ -91,6 +92,7 @@ export default function CampoHome() {
   const [mensaje, setMensaje] = useState("");
   const [metricas, setMetricas] = useState<MetricasCampo>(vacias);
   const [exportando, setExportando] = useState(false);
+  const [guardandoLocal, setGuardandoLocal] = useState(false);
 
   const recargar = useCallback(async () => {
     const usuario = await leerUsuario();
@@ -146,32 +148,63 @@ export default function CampoHome() {
     }
   }
 
+  async function htmlReporte() {
+    const usuario = await leerUsuario();
+    const datos = (await clienteApi().exportacion()) as SupervisionPdfListado[];
+    if (!Array.isArray(datos) || datos.length === 0) {
+      return null;
+    }
+    return htmlListadoSupervisiones({
+      titulo: "Reporte de mis supervisiones",
+      supervisor: usuario
+        ? `${usuario.nombre} ${usuario.apellido}`
+        : undefined,
+      supervisiones: datos,
+    });
+  }
+
   async function exportarPdf() {
     setMensaje("");
     setExportando(true);
     try {
-      const usuario = await leerUsuario();
-      const datos = (await clienteApi().exportacion()) as SupervisionPdfListado[];
-      if (!Array.isArray(datos) || datos.length === 0) {
+      const html = await htmlReporte();
+      if (!html) {
         setMensaje("No tiene supervisiones para exportar.");
         return;
       }
-      await compartirPdf(
-        htmlListadoSupervisiones({
-          titulo: "Reporte de mis supervisiones",
-          supervisor: usuario
-            ? `${usuario.nombre} ${usuario.apellido}`
-            : undefined,
-          supervisiones: datos,
-        }),
-        "mis-supervisiones",
-      );
+      await compartirPdf(html, "mis-supervisiones");
     } catch (error) {
       setMensaje(
         error instanceof Error ? error.message : "No se pudo generar el PDF.",
       );
     } finally {
       setExportando(false);
+    }
+  }
+
+  async function guardarPdfLocal() {
+    setMensaje("");
+    setGuardandoLocal(true);
+    try {
+      const html = await htmlReporte();
+      if (!html) {
+        setMensaje("No tiene supervisiones para guardar.");
+        return;
+      }
+      await guardarPdfEnDispositivo(
+        html,
+        "mis-supervisiones",
+        "Reporte de mis supervisiones",
+      );
+      router.push("/(campo)/reportes");
+    } catch (error) {
+      setMensaje(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el PDF en el dispositivo.",
+      );
+    } finally {
+      setGuardandoLocal(false);
     }
   }
 
@@ -389,13 +422,33 @@ export default function CampoHome() {
           <Text style={botonPrimarioTexto}>Nueva supervisión</Text>
         </Pressable>
       </Link>
+      <Link href="/(campo)/reportes" asChild>
+        <Pressable style={botonPrimario}>
+          <Text style={botonPrimarioTexto}>Mis reportes</Text>
+        </Pressable>
+      </Link>
       <Pressable
         onPress={() => void exportarPdf()}
-        disabled={exportando}
-        style={{ ...botonPrimario, opacity: exportando ? 0.6 : 1 }}
+        disabled={exportando || guardandoLocal}
+        style={{
+          ...botonPrimario,
+          opacity: exportando || guardandoLocal ? 0.6 : 1,
+        }}
       >
         <Text style={botonPrimarioTexto}>
           {exportando ? "Generando PDF..." : "Exportar reporte PDF"}
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => void guardarPdfLocal()}
+        disabled={exportando || guardandoLocal}
+        style={{
+          ...botonPrimario,
+          opacity: exportando || guardandoLocal ? 0.6 : 1,
+        }}
+      >
+        <Text style={botonPrimarioTexto}>
+          {guardandoLocal ? "Guardando PDF..." : "Reporte PDF en el Dispositivo"}
         </Text>
       </Pressable>
       <Pressable onPress={() => void salir()}>

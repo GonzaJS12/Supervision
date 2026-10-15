@@ -32,5 +32,15 @@ export async function obtenerDb() {
     );
   `);
 
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS reportes_pdf (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      titulo TEXT NOT NULL,
+      nombre_archivo TEXT NOT NULL,
+      uri TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `);
+
   return db;
 }
