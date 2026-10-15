@@ -1,24 +1,19 @@
 import { Tabs } from "expo-router";
+import { BarraTabs } from "../../src/barra-tabs";
 import { color } from "../../src/tema";
 
 export default function CampoLayout() {
   return (
     <Tabs
+      tabBar={(props) => <BarraTabs {...props} />}
       screenOptions={{
         headerStyle: { backgroundColor: color.superficie },
         headerShadowVisible: false,
         headerTintColor: color.texto,
         headerTitleStyle: { fontWeight: "700", fontSize: 17 },
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: color.primario,
         tabBarInactiveTintColor: color.textoSuave,
-        tabBarStyle: {
-          backgroundColor: color.superficie,
-          borderTopColor: color.borde,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Inicio" }} />

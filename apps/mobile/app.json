@@ -3,6 +3,10 @@
     "name": "Supervisión APS",
     "slug": "supervision-aps",
     "version": "0.1.0",
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "orientation": "default",
     "scheme": "supervisionaps",
     "userInterfaceStyle": "light",
@@ -11,6 +15,10 @@
       "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
+    },
+    "androidNavigationBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#ffffff"
     },
     "android": {
       "package": "ar.supervision.aps",
@@ -24,7 +32,8 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-sharing"
     ],
     "extra": {
       "router": {},

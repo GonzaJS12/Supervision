@@ -21,10 +21,24 @@ npm run dev:web
 Web: http://localhost:3000  
 Salud: http://localhost:3000/api/v1/health
 
-Móvil (en otra terminal):
+Móvil (en otra terminal, **siempre desde la raíz del monorepo**):
 
 ```bash
 npm run dev:mobile
+```
+
+Eso abre Expo con QR para **Expo Go**. No uses `npx expo start` en la raíz: la app está en `apps/mobile`.
+
+Si la tablet no está en la misma Wi‑Fi:
+
+```bash
+npm run dev:mobile:tunnel
+```
+
+USB / emulador (Android Studio):
+
+```bash
+npm run dev:mobile:android
 ```
 
 La web queda escuchando en `0.0.0.0:3000` para poder entrar desde otro equipo o el celular en la misma red (`http://IP-LAN:3000`). En desarrollo, Expo toma la IP del bundler si no hay `EXPO_PUBLIC_API_URL`. En producción configure `CORS_ORIGINS` (orígenes separados por coma); el Bearer del móvil no usa cookie.
@@ -33,11 +47,11 @@ La web queda escuchando en `0.0.0.0:3000` para poder entrar desde otro equipo o 
 npm run ci
 ```
 
-Ese comando corre las pruebas de dominio y `tsc` de la web.
+Ese comando genera Prisma Client, corre las pruebas de dominio y `tsc` de la web.
 
 ## Despliegue en Vercel (solo la web)
 
-Expo no se despliega en Vercel. El proyecto es un monorepo: en el dashboard deje **Root Directory** en `apps/web` para que Next.js detecte `next.config.ts`.
+Expo no se despliega en Vercel. El proyecto es un monorepo: en el dashboard deje **Root Directory** en `apps/web` para que Next.js detecte `next.config.ts`. La config de build está en `apps/web/vercel.json`.
 
 1. Cree un PostgreSQL (Neon, Supabase u otro) y aplique el esquema **antes** del primer deploy:
 
@@ -48,7 +62,7 @@ Expo no se despliega en Vercel. El proyecto es un monorepo: en el dashboard deje
    (con `DATABASE_URL` y, si usa pooler, `DIRECT_URL` apuntando a producción).
 
 2. En Vercel: **Add New Project** → el repositorio de Git → **Root Directory:** `apps/web`.
-3. **Node.js Version:** 20.x.
+3. **Node.js Version:** 24.x.
 4. Variables de entorno (Production y Preview): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `CORS_ORIGINS`.
 5. Deploy. La URL pública es la web y la API (`https://….vercel.app/api/v1/health`).
 6. En el móvil, `EXPO_PUBLIC_API_URL` debe ser esa URL (sin barra final).
